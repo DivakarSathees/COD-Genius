@@ -52,7 +52,7 @@ export class CodGeneratorComponent implements OnInit {
   constructor(private fb: FormBuilder, private codService: CodServiceService) {
     this.promptForm = this.fb.group({
       prompt: [''],
-      token: ['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2Vyc19kb21haW5faWQiOjQzMTY0NzUsInVzZXJfaWQiOiJiZDNjMmY0ZC1iNTNkLTRkZTYtODJjOS0wMDQxM2I3MDc1NmMiLCJzY2hvb2xfaWQiOiJmZTY1MDJmMC1kZmU1LTRlYzMtYjE4MS0zZThlMzRiMTk4OTQiLCJlbWFpbCI6ImRpdmFrYXIuc0BpYW1uZW8uYWkiLCJlbWFpbF92ZXJpZmllZCI6MSwibmFtZSI6IkRpdmFrYXIkUyIsInBob25lIjoiOTg5NDE1NzYxOSIsInBob25lX3ZlcmlmaWVkIjowLCJwcm9maWxlX3BpYyI6bnVsbCwiZ2VuZGVyIjoiTWFsZSIsInJvbGxfbm8iOm51bGwsInBvcnRhbF9hY2Nlc3Nfc3RhdHVzIjpudWxsLCJlbWFpbF9yZXF1ZXN0ZWRfaGlzdG9yeSI6bnVsbCwiZW1haWxfcmVxdWVzdGVkIjpudWxsLCJwcmltYXJ5X2VtYWlsIjoiZGl2YWthci5zQGlhbW5lby5haSIsInBhcmVudF9jb250YWN0IjpudWxsLCJwaG9uZV9udW1iZXIiOnsiY29kZSI6Iis5MSIsIm51bWJlciI6OTg5NDE1NzYxOX0sImlzX2ZvbGxvd2luZ19wdWJsaWNfZmVlZCI6ZmFsc2UsImJhZGdlIjowLCJzdXBlcmJhZGdlIjowLCJjb25zdW1lZF9iYWRnZSI6MCwiY29uc3VtZWRfc3VwZXJiYWRnZSI6MCwibWFubnVhbGJhZGdlcyI6bnVsbCwic3RhdHVzIjoiSW52aXRlZCIsImRvYiI6bnVsbCwic3RhZmZfdHlwZSI6IkludGVybmFsIiwidmVyaWZpZWRfcGljIjpudWxsLCJhcHBsaWNhdGlvbl9ubyI6bnVsbCwiaGFzaF9pZCI6IjczOWM0Y2ZmNTc0OWQ2YTIzYzIzMTU2N2FmMmY3ODliZjM1ZmE5MTEiLCJyZXNldF9wYXNzd29yZCI6ZmFsc2UsImNyZWF0ZWRBdCI6IjIwMjMtMDctMjBUMTg6MTQ6NDIuMDAwWiIsInVwZGF0ZWRBdCI6IjIwMjQtMTItMTlUMTM6MTA6MzAuMDAwWiIsImRlbGV0ZWRBdCI6bnVsbCwicmVkaXNSb2xlIjoiU3RhZmYiLCJzZXNzaW9uSUQiOiJMZStYbXRMVlhGY1BwWEVpNDJsbXdRPT0iLCJlbmFibGVUd29GYWN0b3JBdXRoZW50aWNhdGlvbiI6ZmFsc2UsImlhdCI6MTc1NzE3NDk5NiwiZXhwIjoxNzU3MjE4MTk2fQ.KMwagd95-1rDRiMhWTnDBbobe7oN4WABWxHDbsTgcyo', Validators.required],
+      token: ['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2Vyc19kb21haW5faWQiOjQzMTY0NzUsInVzZXJfaWQiOiJiZDNjMmY0ZC1iNTNkLTRkZTYtODJjOS0wMDQxM2I3MDc1NmMiLCJzY2hvb2xfaWQiOiJmZTY1MDJmMC1kZmU1LTRlYzMtYjE4MS0zZThlMzRiMTk4OTQiLCJlbWFpbCI6ImRpdmFrYXIuc0BpYW1uZW8uYWkiLCJlbWFpbF92ZXJpZmllZCI6MSwibmFtZSI6IkRpdmFrYXIkUyIsInBob25lIjoiOTg5NDE1NzYxOSIsInBob25lX3ZlcmlmaWVkIjowLCJwcm9maWxlX3BpYyI6bnVsbCwiZ2VuZGVyIjoiTWFsZSIsInJvbGxfbm8iOm51bGwsInBvcnRhbF9hY2Nlc3Nfc3RhdHVzIjpudWxsLCJlbWFpbF9yZXF1ZXN0ZWRfaGlzdG9yeSI6bnVsbCwiZW1haWxfcmVxdWVzdGVkIjpudWxsLCJwcmltYXJ5X2VtYWlsIjoiZGl2YWthci5zQGlhbW5lby5haSIsInBhcmVudF9jb250YWN0IjpudWxsLCJwaG9uZV9udW1iZXIiOnsiY29kZSI6Iis5MSIsIm51bWJlciI6OTg5NDE1NzYxOX0sImlzX2ZvbGxvd2luZ19wdWJsaWNfZmVlZCI6ZmFsc2UsImJhZGdlIjowLCJzdXBlcmJhZGdlIjowLCJjb25zdW1lZF9iYWRnZSI6MCwiY29uc3VtZWRfc3VwZXJiYWRnZSI6MCwibWFubnVhbGJhZGdlcyI6bnVsbCwic3RhdHVzIjoiSW52aXRlZCIsImRvYiI6bnVsbCwic3RhZmZfdHlwZSI6IkludGVybmFsIiwidmVyaWZpZWRfcGljIjpudWxsLCJhcHBsaWNhdGlvbl9ubyI6bnVsbCwiaGFzaF9pZCI6IjczOWM0Y2ZmNTc0OWQ2YTIzYzIzMTU2N2FmMmY3ODliZjM1ZmE5MTEiLCJyZXNldF9wYXNzd29yZCI6ZmFsc2UsImNyZWF0ZWRBdCI6IjIwMjMtMDctMjBUMTg6MTQ6NDIuMDAwWiIsInVwZGF0ZWRBdCI6IjIwMjYtMDMtMThUMDU6NDg6NTEuMDAwWiIsImRlbGV0ZWRBdCI6bnVsbCwicmVkaXNSb2xlIjoiU3RhZmYiLCJzZXNzaW9uSUQiOiJZYklKTzVIVDFmK1R3NUJBQUZtakpBPT0iLCJlbmFibGVUd29GYWN0b3JBdXRoZW50aWNhdGlvbiI6ZmFsc2UsImlhdCI6MTc3NTYyNTk3MiwiZXhwIjoxNzc1NjY5MTcyfQ.gqirY4j3I9QZwQ5n3yRnghXjEosvlRqj8Jhi70lDt_8', Validators.required],
       searchText: ['Dummy_testing_COD_creation'],
       language: ['Java', Validators.required],
       difficulty_level: ['Easy', Validators.required],
@@ -176,6 +176,7 @@ export class CodGeneratorComponent implements OnInit {
       codeOutput: '',
       outputerror: '',
       runcode: false,
+      runningAll: false,
       upload: false,
       batchStatus: null,
       editorOptions: { theme: 'vs-dark', language: langMap[langKey] || 'java' },
@@ -314,7 +315,7 @@ export class CodGeneratorComponent implements OnInit {
     sample.error = '';
     this.codService.runCode({ code: cod.solution, input: sample.input, language: cod.language }).subscribe({
       next: (res: any) => {
-        sample.output = res.output || '';
+        sample.output = res.output+'\n' || '';
         sample.execTimeMs = res.timeBytes || 0;
         sample.memBytes = String(res.memBytes || '');
         if (res.error) sample.error = `${res.error}${res.details ? ': ' + res.details : ''}`;
@@ -322,6 +323,30 @@ export class CodGeneratorComponent implements OnInit {
       },
       error: () => { sample.error = 'Error executing code'; sample.running = false; }
     });
+  }
+
+  async runAllSamples(cod: any) {
+    if (cod.runningAll) return;
+    cod.runningAll = true;
+    for (const sample of cod.samples) {
+      await new Promise<void>((resolve) => {
+        sample.running = true;
+        sample.error = '';
+        this.codService.runCode({ code: cod.solution, input: sample.input, language: cod.language }).subscribe({
+          next: (res: any) => {
+            // sample.output = res.output || '';
+            sample.output = res.output+'\n' || '';
+            sample.execTimeMs = res.execTimeMs || 0;
+            sample.memBytes = String(res.memBytes || '');
+            if (res.error) sample.error = `${res.error}${res.details ? ': ' + res.details : ''}`;
+            sample.running = false;
+            resolve();
+          },
+          error: () => { sample.error = 'Error executing code'; sample.running = false; resolve(); }
+        });
+      });
+    }
+    cod.runningAll = false;
   }
 
   addSample(cod: any) {
@@ -338,6 +363,10 @@ export class CodGeneratorComponent implements OnInit {
     }
     if (cod.samples.some((s: any) => !s.output)) {
       this.error = 'Please run all samples before uploading, or remove unused test cases.'; return;
+    }
+    // if qb id is not selected from dropdown, check if it is present in form input and use that. If not present, throw error
+    if (!this.selectedQbId && !this.promptForm.value.qb_id) {
+      this.error = 'Please select a Question Bank from the dropdown or enter a valid QB ID in the form.'; return;
     }
     const testcases = cod.samples.filter((s: any) => !s.isSelected).map((s: any) => ({
       input: s.input, output: s.output, memBytes: s.memBytes || '0', timeBytes: s.execTimeMs || 0,

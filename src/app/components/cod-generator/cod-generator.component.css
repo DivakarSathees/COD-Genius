@@ -338,6 +338,10 @@
 }
 .divider-label::after { content: ''; flex: 1; height: 1px; background: var(--c-border); }
 
+/* TC divider overrides — no growing line between label and actions */
+.divider-label-tc::after { display: none; }
+.divider-label-tc .btn-run-all { margin-left: auto; }
+
 /* === Quill === */
 .quill-field {
   border: 1px solid var(--c-border);
@@ -484,6 +488,51 @@
   font-size: 13px !important;
 }
 ::ng-deep .ql-editor { min-height: 90px; }
+
+/* === TC action buttons === */
+.btn-run {
+  padding: 8px 18px; background: var(--c-primary); color: #fff;
+  border: none; border-radius: 7px; font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: opacity .15s;
+}
+.btn-run:disabled { opacity: .5; cursor: not-allowed; }
+.btn-run:hover:not(:disabled) { opacity: .88; }
+
+.btn-run-sm {
+  padding: 5px 14px; background: var(--c-primary); color: #fff;
+  border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: opacity .15s;
+}
+.btn-run-sm:disabled { opacity: .5; cursor: not-allowed; }
+.btn-run-sm:hover:not(:disabled) { opacity: .88; }
+
+.btn-run-all {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 14px; background: #0ea5e9; color: #fff;
+  border: none; border-radius: 6px; font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: background .15s, opacity .15s;
+  white-space: nowrap;
+}
+.btn-run-all:hover:not(:disabled) { background: #0284c7; }
+.btn-run-all:disabled { opacity: .5; cursor: not-allowed; }
+.btn-run-all .dot-spinner { border-top-color: #fff; width: 12px; height: 12px; }
+
+.btn-add-tc {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px; background: transparent; color: var(--c-primary);
+  border: 1px dashed var(--c-primary); border-radius: 7px;
+  font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 4px;
+  transition: background .15s;
+}
+.btn-add-tc:hover { background: #eff6ff; }
+
+.btn-upload {
+  padding: 9px 22px; background: var(--c-success); color: #fff;
+  border: none; border-radius: 7px; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: opacity .15s;
+}
+.btn-upload:disabled { opacity: .6; cursor: not-allowed; }
+.btn-upload:hover:not(:disabled) { opacity: .88; }
 
 /* === Responsive === */
 @media (max-width: 900px) {

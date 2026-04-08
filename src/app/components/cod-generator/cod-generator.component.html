@@ -341,12 +341,16 @@
 
           <!-- ── Test Cases ── -->
           <div *ngIf="cod.solutionGenerated && cod.samples.length > 0">
-            <div class="divider-label">
-              Test Cases
+            <div class="divider-label divider-label-tc">
+              <span>Test Cases</span>
               <span *ngIf="cod.validation" class="val-summary">
                 <span class="val-pass-count">✓ {{ cod.validation.passed_count }}/{{ cod.validation.total }}</span>
                 <span *ngIf="cod.validation.failed_count > 0" class="val-fail-count">&nbsp;· {{ cod.validation.failed_count }} failed</span>
               </span>
+              <button class="btn-run-all" [disabled]="cod.runningAll || cod.samples.length === 0" (click)="runAllSamples(cod)">
+                <span *ngIf="!cod.runningAll">▶▶ Run All</span>
+                <span *ngIf="cod.runningAll" class="loading-text"><span class="dot-spinner"></span> Running…</span>
+              </button>
             </div>
 
             <div *ngFor="let s of cod.samples; let j = index; trackBy: trackBySample"
