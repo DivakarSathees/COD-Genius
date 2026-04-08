@@ -1,0 +1,45 @@
+<div class="login-page">
+  <div class="login-card">
+
+    <div class="login-brand">
+      <span class="brand-icon">⚡</span>
+      <span class="brand-name">COD Genius</span>
+    </div>
+
+    <h2 class="login-title">Sign in to your account</h2>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+
+      <div class="field">
+        <label class="field-label">Username</label>
+        <input class="field-input" type="text" formControlName="username"
+          placeholder="Enter username" autocomplete="username" />
+        <div class="field-error"
+          *ngIf="form.get('username')?.invalid && form.get('username')?.touched">
+          Username is required.
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Password</label>
+        <input class="field-input" type="password" formControlName="password"
+          placeholder="Enter password" autocomplete="current-password" />
+        <div class="field-error"
+          *ngIf="form.get('password')?.invalid && form.get('password')?.touched">
+          Password must be at least 6 characters.
+        </div>
+      </div>
+
+      <button type="submit" class="login-btn" [disabled]="loading">
+        <span *ngIf="!loading">Sign In</span>
+        <span *ngIf="loading" class="loading-text">
+          <span class="dot-spinner"></span> Signing in…
+        </span>
+      </button>
+
+    </form>
+
+    <p class="login-hint">Default: <code>admin</code> / <code>admin123</code></p>
+
+  </div>
+</div>

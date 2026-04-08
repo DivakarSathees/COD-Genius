@@ -1,16 +1,17 @@
 import { CommonModule } from '@angular/common';
-import { HttpClientModule } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MonacoEditorModule } from '@materia-ui/ngx-monaco-editor';
 import { NgSelectModule } from '@ng-select/ng-select';
+import { ToastrService } from 'ngx-toastr';
 import { CodServiceService } from '../../services/cod-service.service';
+import { AuthService } from '../../services/auth.service';
 import { QuillEditorComponent } from 'ngx-quill';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-cod-generator',
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, HttpClientModule, MonacoEditorModule, NgSelectModule, QuillEditorComponent, MatTooltipModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, MonacoEditorModule, NgSelectModule, QuillEditorComponent, MatTooltipModule],
   templateUrl: './cod-generator.component.html',
   styleUrl: './cod-generator.component.css'
 })
@@ -34,8 +35,6 @@ export class CodGeneratorComponent implements OnInit {
 
   loading = false;
   batchLoading = false;
-  error = '';
-  success = '';
 
   availableModels: { groq: any[]; azure: any[] } = { groq: [], azure: [] };
   providerModels: any[] = [];
@@ -49,7 +48,10 @@ export class CodGeneratorComponent implements OnInit {
     ]
   };
 
-  constructor(private fb: FormBuilder, private codService: CodServiceService) {
+  get currentUser() { return this.authService.getCurrentUser(); }
+  logout() { this.authService.logout(); }
+
+  constructor(private fb: FormBuilder, private codService: CodServiceService, private authService: AuthService, private toastr: ToastrService) {
     this.promptForm = this.fb.group({
       prompt: [''],
       token: ['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2Vyc19kb21haW5faWQiOjQzMTY0NzUsInVzZXJfaWQiOiJiZDNjMmY0ZC1iNTNkLTRkZTYtODJjOS0wMDQxM2I3MDc1NmMiLCJzY2hvb2xfaWQiOiJmZTY1MDJmMC1kZmU1LTRlYzMtYjE4MS0zZThlMzRiMTk4OTQiLCJlbWFpbCI6ImRpdmFrYXIuc0BpYW1uZW8uYWkiLCJlbWFpbF92ZXJpZmllZCI6MSwibmFtZSI6IkRpdmFrYXIkUyIsInBob25lIjoiOTg5NDE1NzYxOSIsInBob25lX3ZlcmlmaWVkIjowLCJwcm9maWxlX3BpYyI6bnVsbCwiZ2VuZGVyIjoiTWFsZSIsInJvbGxfbm8iOm51bGwsInBvcnRhbF9hY2Nlc3Nfc3RhdHVzIjpudWxsLCJlbWFpbF9yZXF1ZXN0ZWRfaGlzdG9yeSI6bnVsbCwiZW1haWxfcmVxdWVzdGVkIjpudWxsLCJwcmltYXJ5X2VtYWlsIjoiZGl2YWthci5zQGlhbW5lby5haSIsInBhcmVudF9jb250YWN0IjpudWxsLCJwaG9uZV9udW1iZXIiOnsiY29kZSI6Iis5MSIsIm51bWJlciI6OTg5NDE1NzYxOX0sImlzX2ZvbGxvd2luZ19wdWJsaWNfZmVlZCI6ZmFsc2UsImJhZGdlIjowLCJzdXBlcmJhZGdlIjowLCJjb25zdW1lZF9iYWRnZSI6MCwiY29uc3VtZWRfc3VwZXJiYWRnZSI6MCwibWFubnVhbGJhZGdlcyI6bnVsbCwic3RhdHVzIjoiSW52aXRlZCIsImRvYiI6bnVsbCwic3RhZmZfdHlwZSI6IkludGVybmFsIiwidmVyaWZpZWRfcGljIjpudWxsLCJhcHBsaWNhdGlvbl9ubyI6bnVsbCwiaGFzaF9pZCI6IjczOWM0Y2ZmNTc0OWQ2YTIzYzIzMTU2N2FmMmY3ODliZjM1ZmE5MTEiLCJyZXNldF9wYXNzd29yZCI6ZmFsc2UsImNyZWF0ZWRBdCI6IjIwMjMtMDctMjBUMTg6MTQ6NDIuMDAwWiIsInVwZGF0ZWRBdCI6IjIwMjYtMDMtMThUMDU6NDg6NTEuMDAwWiIsImRlbGV0ZWRBdCI6bnVsbCwicmVkaXNSb2xlIjoiU3RhZmYiLCJzZXNzaW9uSUQiOiJZYklKTzVIVDFmK1R3NUJBQUZtakpBPT0iLCJlbmFibGVUd29GYWN0b3JBdXRoZW50aWNhdGlvbiI6ZmFsc2UsImlhdCI6MTc3NTYyNTk3MiwiZXhwIjoxNzc1NjY5MTcyfQ.gqirY4j3I9QZwQ5n3yRnghXjEosvlRqj8Jhi70lDt_8', Validators.required],
@@ -212,8 +214,6 @@ export class CodGeneratorComponent implements OnInit {
   generateFromPrompt() {
     if (this.loading) return;
     this.loading = true;
-    this.error = '';
-    this.success = '';
     const payload = { ...this.promptForm.getRawValue(), sessionId: sessionStorage.getItem('codSessionId') };
     this.fetchSideData();
     this.codService.generateCods(payload).subscribe({
@@ -221,10 +221,11 @@ export class CodGeneratorComponent implements OnInit {
         sessionStorage.setItem('codSessionId', res.response.sessionId);
         this.getAllSessions();
         this.cods = (res.response.result || []).map((cod: any) => this.makeCod(cod));
+        this.toastr.success(`${this.cods.length} problem(s) generated successfully.`, 'Done');
         this.loading = false;
       },
-      error: () => {
-        this.error = 'Failed to generate problems. Please try again.';
+      error: (err: any) => {
+        this.toastr.error(err.error?.error || 'Failed to generate problems. Please try again.', 'Error');
         this.loading = false;
       }
     });
@@ -233,8 +234,6 @@ export class CodGeneratorComponent implements OnInit {
   generateBatch() {
     if (this.batchLoading) return;
     this.batchLoading = true;
-    this.error = '';
-    this.success = '';
     const payload = {
       ...this.promptForm.getRawValue(),
       sessionId: sessionStorage.getItem('codSessionId'),
@@ -245,6 +244,9 @@ export class CodGeneratorComponent implements OnInit {
       next: (res: any) => {
         sessionStorage.setItem('codSessionId', res.sessionId);
         this.getAllSessions();
+        const validCount = (res.results || []).filter((r: any) => r.status === 'valid').length;
+        const total = (res.results || []).length;
+        this.toastr.success(`${total} problem(s) generated · ${validCount}/${total} validated.`, 'Batch Complete');
         this.cods = (res.results || []).map((item: any) => {
           const cod = this.makeCod(item.problem);
           const validation = item.validation;
@@ -268,8 +270,8 @@ export class CodGeneratorComponent implements OnInit {
         });
         this.batchLoading = false;
       },
-      error: () => {
-        this.error = 'Batch generation failed. Please try again.';
+      error: (err: any) => {
+        this.toastr.error(err.error?.error || 'Batch generation failed. Please try again.', 'Error');
         this.batchLoading = false;
       }
     });
@@ -288,9 +290,10 @@ export class CodGeneratorComponent implements OnInit {
         cod.solutionVisible = true;
         cod.solutionGenerating = false;
       },
-      error: () => {
+      error: (err: any) => {
         cod.solutionError = 'Error generating solution. Please try again.';
         cod.solutionGenerating = false;
+        this.toastr.error(err.error?.error || 'Failed to generate solution.', 'Error');
       }
     });
   }
@@ -356,29 +359,26 @@ export class CodGeneratorComponent implements OnInit {
   deleteSample(cod: any, index: number) { cod.samples.splice(index, 1); }
 
   uploadCOD(cod: any) {
-    this.success = '';
-    this.error = '';
     if (cod.samples.some((s: any) => s.error)) {
-      this.error = 'Please resolve all sample errors before uploading.'; return;
+      this.toastr.warning('Please resolve all sample errors before uploading.', 'Validation Failed'); return;
     }
     if (cod.samples.some((s: any) => !s.output)) {
-      this.error = 'Please run all samples before uploading, or remove unused test cases.'; return;
+      this.toastr.warning('Please run all samples before uploading, or remove unused test cases.', 'Validation Failed'); return;
     }
-    // if qb id is not selected from dropdown, check if it is present in form input and use that. If not present, throw error
     if (!this.selectedQbId && !this.promptForm.value.qb_id) {
-      this.error = 'Please select a Question Bank from the dropdown or enter a valid QB ID in the form.'; return;
+      this.toastr.warning('Please select a Question Bank from the dropdown or enter a valid QB ID in the form.', 'Validation Failed'); return;
     }
     const testcases = cod.samples.filter((s: any) => !s.isSelected).map((s: any) => ({
       input: s.input, output: s.output, memBytes: s.memBytes || '0', timeBytes: s.execTimeMs || 0,
       difficulty: s.difficulty || 'Medium', score: s.score || 0, timeLimit: null, outputLimit: null, memoryLimit: null
     }));
     const totalScore = testcases.reduce((sum: number, tc: any) => sum + Number(tc.score || 0), 0);
-    if (totalScore !== 100) { this.error = `Test case scores must total 100. Currently: ${totalScore}`; return; }
+    if (totalScore !== 100) { this.toastr.warning(`Test case scores must total 100. Currently: ${totalScore}`, 'Score Mismatch'); return; }
     const sampleIo = cod.samples.filter((s: any) => s.isSelected).map((s: any) => ({
       input: s.input, output: s.output, memBytes: s.memBytes || '0', timeBytes: s.execTimeMs || 0,
       sample: 'Yes', difficulty: ' - ', score: ' - ', timeLimit: null, outputLimit: null, memoryLimit: null
     }));
-    if (sampleIo.length === 0) { this.error = 'Please mark at least one test case as sample I/O before uploading.'; return; }
+    if (sampleIo.length === 0) { this.toastr.warning('Please mark at least one test case as sample I/O before uploading.', 'Validation Failed'); return; }
     const vals = this.promptForm.getRawValue();
     const payload = {
       question_type: 'programming', question_data: cod.question_data, question_editor_type: 1,
@@ -401,10 +401,16 @@ export class CodGeneratorComponent implements OnInit {
     };
     this.codService.uploadCods(payload, this.promptForm.value.token).subscribe({
       next: (res: any) => {
-        if (res.response[0].status === 'Uploaded') { cod.upload = true; this.success = 'Question uploaded successfully!'; }
-        else this.error = 'Upload failed. Please try again.';
+        if (res.response[0].status === 'Uploaded') {
+          cod.upload = true;
+          this.toastr.success('Question uploaded to platform successfully!', 'Uploaded');
+        } else {
+          this.toastr.error('Upload failed. Please try again.', 'Upload Error');
+        }
       },
-      error: (err: any) => { this.error = 'Upload error: ' + (err.error?.message || 'Unknown error'); }
+      error: (err: any) => {
+        this.toastr.error('Upload error: ' + (err.error?.message || 'Unknown error'), 'Upload Error');
+      }
     });
   }
 

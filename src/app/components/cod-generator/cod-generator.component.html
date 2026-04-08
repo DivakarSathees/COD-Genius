@@ -9,6 +9,15 @@
       </div>
     </div>
     <div class="sidebar-body">
+      <!-- User info + logout -->
+      <div class="sidebar-user" *ngIf="currentUser">
+        <div class="user-avatar">{{ currentUser.name.charAt(0).toUpperCase() }}</div>
+        <div class="user-info">
+          <div class="user-name">{{ currentUser.name }}</div>
+          <div class="user-role">{{ currentUser.role }}</div>
+        </div>
+        <button class="logout-btn" (click)="logout()" title="Sign out">↩</button>
+      </div>
       <p class="sidebar-section-label">Sessions</p>
       <button class="new-session-btn" type="button" (click)="createNewSession()">
         <span class="plus-icon">+</span> New Session
@@ -158,11 +167,8 @@
       </form>
     </div>
 
-    <!-- Alerts -->
-    <div *ngIf="error" class="alert alert-error">⚠ {{ error }}</div>
-    <div *ngIf="success" class="alert alert-success">✓ {{ success }}</div>
 
-    <!-- ─── Question Banks ─── -->
+<!-- ─── Question Banks ─── -->
     <div *ngIf="filteredQuestionBanks.length > 0" class="panel">
       <div class="panel-header">
         <h3 class="panel-title">Question Banks</h3>
