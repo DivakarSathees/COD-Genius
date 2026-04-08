@@ -1,0 +1,344 @@
+
+
+<div class="mcq-generator-container">
+    <h2>MCQ Generator</h2>
+  
+    <label>
+      <input type="radio" name="mode" value="form" [(ngModel)]="mode" />
+      Use Form
+    </label>
+    <label>
+      <input type="radio" name="mode" value="prompt" [(ngModel)]="mode" />
+      Use Custom Prompt
+    </label>
+  
+    <form *ngIf="mode === 'form'" [formGroup]="mcqForm" (ngSubmit)="generateFromForm()">
+      <div>
+        <label>Question Count:</label>
+        <input type="number" formControlName="question_count" />
+      </div>
+  
+      <div>
+        <label>Options Count:</label>
+        <input type="number" formControlName="options_count" />
+      </div>
+  
+      <div>
+        <label>Difficulty Level:</label>
+        <select formControlName="difficulty_level">
+          <option value="Easy">Easy</option>
+          <option value="Medium">Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+      </div>
+
+      <!-- drop down for whether it si code snippet based or not -->
+      <div>
+        <label>Code Snippet Based:</label>
+        <select formControlName="code_snippet">
+          <option value=1>Yes</option>
+          <option value=0>No</option>
+        </select>
+      </div>
+  
+      <div>
+        <label>Topic:</label>
+        <input type="text" formControlName="topic" />
+      </div>
+
+      <div>
+        <label>Token:</label>
+        <input type="text" formControlName="token" />
+      </div>
+
+      <!-- creat by name with drop down -->
+      <!-- <div>
+        <label>Creator Name:</label>
+        <select formControlName="createdBy">
+          <option value="" disabled selected>Select Creator</option>
+          <option value="bd3c2f4d-b53d-4de6-82c9-00413b70756c">Divakar</option>
+          <option value="2b1611eb-f067-4592-a21e-0917d6fc59ae">Velan</option>
+        </select>
+      </div> -->
+
+      <!-- qb_id -->
+      <div>
+        <label>Question Bank ID:</label>
+        <input type="text" formControlName="qb_id" />
+      </div>
+
+      <div>
+        <label>Question Bank Name:</label>
+        <input type="text" formControlName="searchText" />
+      </div>
+  
+
+      <button type="submit" [disabled]="loading || mcqForm.invalid">
+        {{ loading ? 'Generating...' : 'Generate MCQs' }}
+      </button>
+    </form>
+  
+    <form *ngIf="mode === 'prompt'" [formGroup]="promptForm" (ngSubmit)="generateFromPrompt()">
+      <label>Enter Custom Prompt:</label>
+      <textarea formControlName="prompt" name="prompt" rows="6" cols="60" required></textarea>
+      <div>
+        <label>Code Snippet Based:</label>
+        <select formControlName="code_snippet">
+          <option value=1>Yes</option>
+          <option value=0>No</option>
+        </select>
+      </div>
+      <div>
+        <label>Token:</label>
+        <input type="text" formControlName="token" />
+      </div>
+      <div>
+        <label>Question Bank ID:</label>
+        <input type="text" formControlName="qb_id" />
+      </div>
+      <div>
+        <label>Question Bank Name:</label>
+        <input type="text" formControlName="searchText" />
+      </div>
+      <br />
+      <button type="submit" [disabled]="loading">
+        {{ loading ? 'Generating...' : 'Generate MCQs' }}
+      </button>
+    </form>
+        <div *ngIf="filteredQuestionBanks.length > 0" >
+    <div class="filter-section">
+      <label>Filter by Created By:</label>
+      <select class="filter-select" [(ngModel)]="selectedCreator" (change)="filterByCreator()">
+        <option value="">All Creators</option>
+        <option *ngFor="let creator of uniqueCreators" [value]="creator">
+          {{ creator }}
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <div *ngIf="filteredQuestionBanks.length > 0" class="card fade-in">
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Question Bank Name</th>
+            <th>Question Count</th>
+            <th>Created By</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="let qb of filteredQuestionBanks"
+            [class.selected]="qb.qb_id === selectedQbId">
+            <td>
+              <strong>{{ qb.qb_name }}</strong>
+            </td>
+            <td>
+              <span class="question-count">{{ qb.questionCount || 'N/A' }}</span>
+            </td>
+            <td>{{ qb.createdBy || 'N/A' }}</td>
+            <td>
+              <button class="btn btn-secondary" (click)="selectQB(qb)">
+                Select
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+    <!-- <ngx-monaco-editor></ngx-monaco-editor> -->
+
+    <div *ngIf="error" class="error">{{ error }}</div>
+    <!-- <ngx-monaco-editor class="textEditorContainer" [options]="editorOptions" [(ngModel)]="userCode" (init)="editorInit($event)"></ngx-monaco-editor> -->
+  
+    <div *ngIf="mcqs.length > 0">
+      <!-- <h3>Generated MCQs:</h3>
+      <pre>{{ mcqs | json }}</pre> -->
+      <div class="mcq-card-container" *ngIf="mcqs.length > 0">
+        <h2>Generated MCQs</h2>
+        <button (click)="uploadAllQuestion(mcqs)">{{ uploading ?  '🏃‍➡️ Uploading...' : '📤 Upload All' }}</button>
+      
+        <!-- <div *ngFor="let mcq of mcqs; let i = index" class="mcq-card">
+
+          <h4>Q{{ i + 1 }}. {{ mcq.question_data }}</h4>
+      
+          <ul>
+            <li *ngFor="let opt of mcq.options">
+              {{ opt.text }}
+            </li>
+          </ul>
+      
+          <p><strong>Correct Answer:</strong> {{ mcq.answer.args[0] }}</p>
+          <p><strong>Difficulty:</strong> {{ mcq.manual_difficulty || mcq.difficulty }}</p>
+      
+          <button (click)="verifyQuestion(mcq)">✅ Verify</button>
+          <button (click)="uploadQuestion(mcq)">📤 Upload</button>
+        </div> -->
+
+        
+
+<form class="topic" [formGroup]="mcqForm">
+  <div class="form-group1">
+    <label for="subtopic">Subtopic</label>
+    <ng-select
+      [items]="subtopics"
+      bindLabel="name"
+      bindValue="sub_topic_id"
+      formControlName="sub_topic_id"
+      [searchable]="true"
+      [searchFn]="customSearchFn"
+      (change)="onSubtopicChangeById($event.sub_topic_id)">
+      <ng-template ng-option-tmp let-item="item">
+        {{ item?.name }} - {{ item?.topic?.name }} - {{ item?.topic?.subject?.name }}
+      </ng-template>
+
+      <!-- Custom display in selected item -->
+      <ng-template class="options-ng" ng-label-tmp let-item="item">
+        {{ item?.name }} - {{ item?.topic?.name }} - {{ item?.topic?.subject?.name }}
+      </ng-template>
+    </ng-select>
+  </div>
+
+  <!-- Topic -->
+   <div class="form-group2">
+  <div class="form-group1">
+    <label for="topic_name">Topic</label>
+    <input type="text" formControlName="topic_name" readonly />
+  </div><br>
+
+  <!-- Subject -->
+  <div class="form-group1">
+    <label for="subject_name">Subject</label>
+    <input type="text" formControlName="subject_name" readonly />
+  </div>
+   </div>
+</form>
+<select [(ngModel)]="language" class="editable-select"
+  style="width: fit-content;"
+  >
+    <option value="" disabled selected>Select Language</option>
+    <option value="python">Python</option>
+    <option value="javascript">JavaScript</option>
+    <option value="java">Java</option>
+    <option value="c">C</option>
+    <option value="cpp">C++</option>
+    <option value="csharp">C#</option>
+    <option value="ruby">Ruby</option>
+    <option value="go">Go</option>
+    <option value="typescript">TypeScript</option>
+    <option value="kotlin">Kotlin</option>
+    <option value="php">PHP</option>
+    <option value="bash">Bash</option>
+    </select> 
+
+        <div
+  *ngFor="let mcq of mcqs; let i = index"
+  class="mcq-card"
+  [ngStyle]="{
+    'border-left': mcq.manual_difficulty === 'Hard' ? '5px solid #f56565' :
+                   mcq.manual_difficulty === 'Medium' ? '5px solid #ed8936' :
+                   '5px solid #48bb78',
+    'background-color': mcq.manual_difficulty === 'Hard' ? '#ffe5e5' :
+                        mcq.manual_difficulty === 'Medium' ? '#fff3e0' :
+                        '#f0fff4'
+  }"
+>
+
+
+  <div style="display: flex;justify-content: space-between;">
+  <div style="display: flex;
+    align-items: center;
+    flex-direction: row;
+    justify-content: flex-start;">
+
+
+  <label style="font-size: 1.2rem;color: #667eea;font-weight: 700;">
+    <strong>Q{{ i + 1 }}.</strong>
+  </label>
+    <textarea
+    style="width: 560px; height: 36; margin-left: 10px;"
+  [(ngModel)]="mcqs[i].questionText" rows="3" class="editable-textarea"></textarea>
+  </div>
+  <div>
+<!-- <button style="height: fit-content;" (click)="copyMcq(mcq)">📋 Copy All</button> -->
+ <button (click)="copyMcq(mcq, i, $event)">
+  {{ copiedIndex === i ? '✅ Copied!' : '📋 Copy' }}
+</button>
+
+</div>
+</div>
+  <br>
+  <!-- <textarea 
+  style="width: 560px; height: 117px;"
+  [(ngModel)]="mcq.question_data" rows="2" class="editable-textarea"></textarea> -->
+
+  <!-- <label>Question:</label><br> -->
+  <!-- <textarea
+    style="width: 560px; height: 36;"
+  [(ngModel)]="mcqs[i].questionText" rows="3" class="editable-textarea"></textarea><br> -->
+  <!-- Remove Code snippet toggle -->
+  <button *ngIf="mcqs[i].codeSnippet" (click)="mcqs[i].codeVisible = !mcqs[i].codeVisible" style="margin-bottom: 8px;">
+    {{ mcqs[i].codeVisible ? '🔒 Hide Code Snippet' : '🔓 Show Code Snippet' }}
+  </button>
+  
+  <div *ngIf="mcqs[i].codeVisible" style="height: 132px;">
+      <ngx-monaco-editor style="height: 50%" [options]="editorOptions" [(ngModel)]="mcqs[i].codeSnippet"></ngx-monaco-editor>
+      <!-- button to run code -->
+      
+  </div>
+  <button [disabled]="mcq.runcode" *ngIf="mcqs[i].codeVisible" (click)="runCode(mcqs[i].codeSnippet, i, mcq)">{{ mcq.runcode ?  '🏃‍➡️ Running...' : '🏃‍➡️ Run Code' }}</button>
+  <!-- button to clear the output -->
+  <button *ngIf="mcqs[i].codeOutput" (click)="mcqs[i].codeOutput=''">🧹 Clear Output</button>
+      <div *ngIf="mcqs[i].codeOutput && !outputerror" class="code-output">
+        <strong>Output:</strong>
+        <pre>{{ mcqs[i]['codeOutput'] }}</pre>
+      </div>
+      <div *ngIf="mcqs[i].outputerror" class="code-output">
+        <strong>Error:</strong>
+        <pre>{{mcqs[i].outputerror}}</pre>
+      </div>
+
+
+  <ul>
+    <li *ngFor="let opt of mcq.options; let j = index">
+      <textarea
+        style="width: 560px;"
+        type="text"
+        [(ngModel)]="mcq.options[j].text"
+        placeholder="Option {{ j + 1 }}"
+        class="editable-textarea"
+      ></textarea>
+    </li>
+  </ul>
+
+  <label><strong>Correct Answer:</strong></label>
+  <textarea
+    type="text"
+    [(ngModel)]="mcq.answer.args[0]"
+    placeholder="Correct Answer"
+    class="editable-textarea"
+  ></textarea>
+
+  <label><strong>Difficulty:</strong></label>
+  <select [(ngModel)]="mcq.manual_difficulty" class="editable-select">
+    <option value="Easy">Easy</option>
+    <option value="Medium">Medium</option>
+    <option value="Hard">Hard</option>
+  </select>
+
+  <div class="button-group">
+    <button  [disabled]="mcq.verify" (click)="verifySplitQuestion(mcq)">{{ mcq.verify ? 'Verifing' : '✅ Verify' }}</button>
+    <button  [disabled]="mcq.upload" (click)="uploadSplitQuestion(mcq)">{{ mcq.upload ? 'Uploaded' : '📤 Upload' }}</button>
+  </div>
+</div>
+
+      </div>
+      
+    </div>
+  </div>
+  

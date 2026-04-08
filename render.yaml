@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: cod-generator-frontend
+    env: node
+    buildCommand: npm install --legacy-peer-deps && npm run build
+    startCommand: npm start

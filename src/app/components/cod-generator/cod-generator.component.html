@@ -1,0 +1,428 @@
+<div class="app-layout">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">COD Genius</span>
+      </div>
+    </div>
+    <div class="sidebar-body">
+      <p class="sidebar-section-label">Sessions</p>
+      <button class="new-session-btn" type="button" (click)="createNewSession()">
+        <span class="plus-icon">+</span> New Session
+      </button>
+      <div class="sessions-list">
+        <div
+          *ngFor="let session of sessions"
+          class="session-item"
+          [class.active]="session._id === selectedSessionId"
+          (click)="selectSession(session)">
+          <div class="session-avatar">{{ session.name.charAt(0) }}</div>
+          <div class="session-info">
+            <div class="session-name">{{ session.name }}</div>
+            <div class="session-date">{{ session.createdAt | date:'MMM d, y' }}</div>
+          </div>
+        </div>
+        <div *ngIf="!sessions?.length" class="no-sessions">
+          No sessions yet.<br>Create one to get started.
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN CONTENT ═══ -->
+  <main class="main-content">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1 class="page-title">COD Generator</h1>
+      <p class="page-subtitle">Generate coding problems with AI-powered solutions and automated validation</p>
+    </div>
+
+    <!-- ─── Config Panel ─── -->
+    <div class="panel config-panel">
+      <form [formGroup]="promptForm">
+
+        <!-- Row 1: Core settings -->
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label">Language</label>
+            <select class="field-select" formControlName="language">
+              <option value="Java">Java</option>
+              <option value="Python">Python</option>
+              <option value="C#">C#</option>
+              <option value="C">C</option>
+              <option value="C++">C++</option>
+              <option value="JavaScript">JavaScript</option>
+            </select>
+          </div>
+
+          <div class="form-field" *ngIf="newSession">
+            <label class="field-label">Topic</label>
+            <input class="field-input" type="text" formControlName="topic" placeholder="e.g. OOPS, Inheritance" />
+          </div>
+          <div class="form-field" *ngIf="!newSession">
+            <label class="field-label">Topic</label>
+            <select class="field-select" formControlName="topic">
+              <option *ngFor="let t of uniqueTopics" [value]="t">{{ t }}</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label class="field-label">Difficulty</label>
+            <select class="field-select" formControlName="difficulty_level">
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+          </div>
+
+          <div class="form-field field-narrow">
+            <label class="field-label">Count <span class="field-hint">(1–10)</span></label>
+            <input class="field-input" type="number" formControlName="count" min="1" max="10" />
+          </div>
+
+          <div class="form-field">
+            <label class="field-label">Format</label>
+            <div class="toggle-group">
+              <button type="button" class="toggle-btn"
+                [class.active]="promptForm.get('format')?.value === 'detailed'"
+                (click)="promptForm.get('format')?.setValue('detailed')">Detailed</button>
+              <button type="button" class="toggle-btn"
+                [class.active]="promptForm.get('format')?.value === 'simple'"
+                (click)="promptForm.get('format')?.setValue('simple')">Simple</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: AI Provider & Model -->
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label">AI Provider</label>
+            <select class="field-select" formControlName="provider">
+              <option value="groq">Groq (Llama)</option>
+              <option value="azure">Azure OpenAI (GPT)</option>
+            </select>
+          </div>
+          <div class="form-field flex-2">
+            <label class="field-label">Model</label>
+            <select class="field-select" formControlName="model">
+              <option *ngFor="let m of providerModels" [value]="m.id">{{ m.name }}</option>
+              <option *ngIf="!providerModels.length" value="">Loading models…</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Prompt (new session) -->
+        <div class="form-field full-width" *ngIf="newSession">
+          <label class="field-label">Custom Prompt <span class="field-hint">(optional — leave blank for auto-generated)</span></label>
+          <textarea class="field-textarea" formControlName="prompt" rows="3"
+            placeholder="Describe what kind of problem to generate..."></textarea>
+        </div>
+
+        <!-- Row 2: Platform credentials -->
+        <div class="form-row">
+          <div class="form-field flex-2">
+            <label class="field-label">Auth Token</label>
+            <input class="field-input" type="password" formControlName="token" placeholder="Platform bearer token" />
+          </div>
+          <div class="form-field">
+            <label class="field-label">QB Search</label>
+            <input class="field-input" type="text" formControlName="searchText" placeholder="Question bank name" />
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary"
+            [disabled]="loading || batchLoading"
+            (click)="generateFromPrompt()">
+            <span *ngIf="!loading">Generate Problems</span>
+            <span *ngIf="loading" class="loading-text"><span class="dot-spinner"></span> Generating…</span>
+          </button>
+
+          <button type="button" class="btn btn-batch"
+            [disabled]="loading || batchLoading"
+            (click)="generateBatch()">
+            <span *ngIf="!batchLoading">⚡ Generate &amp; Validate</span>
+            <span *ngIf="batchLoading" class="loading-text"><span class="dot-spinner"></span> Processing all…</span>
+          </button>
+
+          <span class="action-hint">
+            <strong>Generate Problems</strong> — descriptions only &nbsp;·&nbsp;
+            <strong>Generate &amp; Validate</strong> — full pipeline with auto-validation
+          </span>
+        </div>
+      </form>
+    </div>
+
+    <!-- Alerts -->
+    <div *ngIf="error" class="alert alert-error">⚠ {{ error }}</div>
+    <div *ngIf="success" class="alert alert-success">✓ {{ success }}</div>
+
+    <!-- ─── Question Banks ─── -->
+    <div *ngIf="filteredQuestionBanks.length > 0" class="panel">
+      <div class="panel-header">
+        <h3 class="panel-title">Question Banks</h3>
+        <select class="field-select qb-filter-select" [(ngModel)]="selectedCreator" (change)="filterByCreator()">
+          <option value="">All Creators</option>
+          <option *ngFor="let c of uniqueCreators" [value]="c">{{ c }}</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Question Bank</th>
+              <th>Questions</th>
+              <th>Created By</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let qb of filteredQuestionBanks" [class.row-selected]="qb.qb_id === selectedQbId">
+              <td><strong>{{ qb.qb_name }}</strong></td>
+              <td><span class="badge badge-neutral">{{ qb.questionCount || 'N/A' }}</span></td>
+              <td class="text-muted">{{ qb.createdBy || 'N/A' }}</td>
+              <td>
+                <button class="btn btn-sm btn-outline" (click)="selectQB(qb)">
+                  {{ qb.qb_id === selectedQbId ? '✓ Selected' : 'Select' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─── Platform Classification ─── -->
+    <div *ngIf="subtopics.length > 0 && cods.length > 0" class="panel">
+      <h3 class="panel-title">Platform Classification</h3>
+      <form [formGroup]="promptForm">
+        <div class="form-row">
+          <div class="form-field flex-2">
+            <label class="field-label">Subtopic</label>
+            <ng-select
+              [items]="subtopics"
+              bindLabel="name"
+              bindValue="sub_topic_id"
+              formControlName="sub_topic_id"
+              [searchFn]="customSearchFn"
+              (change)="onSubtopicChangeById($event?.sub_topic_id)">
+              <ng-template ng-option-tmp let-item="item">
+                {{ item?.name }} — {{ item?.topic?.name }} — {{ item?.topic?.subject?.name }}
+              </ng-template>
+              <ng-template ng-label-tmp let-item="item">
+                {{ item?.name }} — {{ item?.topic?.name }} — {{ item?.topic?.subject?.name }}
+              </ng-template>
+            </ng-select>
+          </div>
+          <div class="form-field">
+            <label class="field-label">Topic</label>
+            <input class="field-input" type="text" formControlName="topic_name" readonly />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Subject</label>
+            <input class="field-input" type="text" formControlName="subject_name" readonly />
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- ─── Generated Questions ─── -->
+    <div *ngIf="cods.length > 0" class="questions-section">
+      <div class="questions-header">
+        <h2 class="section-title">
+          Generated Questions
+          <span class="count-pill">{{ cods.length }}</span>
+        </h2>
+      </div>
+
+      <div *ngFor="let cod of cods; let i = index; trackBy: trackByCod"
+        class="q-card"
+        [class.q-card-collapsed]="cod.collapsed">
+
+        <!-- Card Header -->
+        <div class="q-card-header" (click)="cod.collapsed = !cod.collapsed">
+          <div class="q-card-meta">
+            <span class="q-number">Q{{ i + 1 }}</span>
+            <span class="diff-badge"
+              [style.background]="difficultyColor(cod.manual_difficulty) + '22'"
+              [style.color]="difficultyColor(cod.manual_difficulty)"
+              [style.border-color]="difficultyColor(cod.manual_difficulty) + '55'">
+              {{ cod.manual_difficulty || 'Easy' }}
+            </span>
+            <span class="lang-badge">{{ cod.language }}</span>
+            <span *ngIf="cod.batchStatus === 'valid'" class="status-badge status-valid">✓ Validated</span>
+            <span *ngIf="cod.batchStatus === 'failed'" class="status-badge status-failed">✗ Needs Review</span>
+            <span *ngIf="cod.batchStatus === 'error'" class="status-badge status-warn">! Error</span>
+          </div>
+          <div class="q-card-right">
+            <span *ngIf="cod.upload" class="status-badge status-uploaded">✓ Uploaded</span>
+            <span class="chevron" [class.chevron-down]="!cod.collapsed">›</span>
+          </div>
+        </div>
+
+        <!-- Card Body -->
+        <div *ngIf="!cod.collapsed" class="q-card-body">
+
+          <!-- Problem Description -->
+          <div class="card-section">
+            <div class="sub-label">Problem Description</div>
+            <quill-editor [(ngModel)]="cod.question_data" [modules]="toolbarOptions" theme="snow" class="quill-field"></quill-editor>
+          </div>
+
+          <!-- Input / Output Format -->
+          <div class="two-col">
+            <div class="card-section">
+              <div class="sub-label">Input Format</div>
+              <quill-editor [(ngModel)]="cod.inputformat" [modules]="toolbarOptions" theme="snow" class="quill-field quill-sm"></quill-editor>
+            </div>
+            <div class="card-section">
+              <div class="sub-label">Output Format</div>
+              <quill-editor [(ngModel)]="cod.outputformat" [modules]="toolbarOptions" theme="snow" class="quill-field quill-sm"></quill-editor>
+            </div>
+          </div>
+
+          <!-- Difficulty -->
+          <div class="card-section inline-row">
+            <div class="sub-label" style="margin:0 12px 0 0;">Difficulty</div>
+            <select class="field-select narrow-select" [(ngModel)]="cod.manual_difficulty">
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+          </div>
+
+          <!-- ── Solution ── -->
+          <div class="divider-label">Solution</div>
+
+          <div *ngIf="!cod.solutionGenerated" class="solution-cta">
+            <button class="btn btn-primary" [disabled]="cod.solutionGenerating" (click)="generateSolution(cod)">
+              <span *ngIf="!cod.solutionGenerating">▶ Generate Solution</span>
+              <span *ngIf="cod.solutionGenerating" class="loading-text"><span class="dot-spinner"></span> Generating…</span>
+            </button>
+            <div *ngIf="cod.solutionError" class="inline-error">{{ cod.solutionError }}</div>
+          </div>
+
+          <div *ngIf="cod.solutionGenerated">
+            <div class="solution-toolbar">
+              <span class="sub-label" style="margin:0;">Generated Code</span>
+              <div class="solution-toolbar-actions">
+                <button class="btn btn-ghost btn-sm" (click)="cod.solutionVisible = !cod.solutionVisible">
+                  {{ cod.solutionVisible ? '▲ Hide' : '▼ Show' }}
+                </button>
+                <button class="btn btn-ghost btn-sm" [disabled]="cod.solutionGenerating" (click)="generateSolution(cod)">
+                  ↺ Regenerate
+                </button>
+              </div>
+            </div>
+
+            <div *ngIf="cod.solutionVisible">
+              <div class="editor-wrap">
+                <ngx-monaco-editor [options]="cod.editorOptions" [(ngModel)]="cod.solution"></ngx-monaco-editor>
+              </div>
+
+              <!-- Manual run -->
+              <div class="run-row">
+                <textarea class="run-input" [(ngModel)]="cod.input" placeholder="Custom input (optional)…"></textarea>
+                <button class="btn btn-run" [disabled]="cod.runcode" (click)="runCode(cod)">
+                  {{ cod.runcode ? 'Running…' : '▶ Run' }}
+                </button>
+              </div>
+              <div *ngIf="cod.codeOutput || cod.outputerror" class="output-box">
+                <pre *ngIf="cod.codeOutput" class="out-success">{{ cod.codeOutput }}</pre>
+                <pre *ngIf="cod.outputerror" class="out-error">{{ cod.outputerror }}</pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Test Cases ── -->
+          <div *ngIf="cod.solutionGenerated && cod.samples.length > 0">
+            <div class="divider-label">
+              Test Cases
+              <span *ngIf="cod.validation" class="val-summary">
+                <span class="val-pass-count">✓ {{ cod.validation.passed_count }}/{{ cod.validation.total }}</span>
+                <span *ngIf="cod.validation.failed_count > 0" class="val-fail-count">&nbsp;· {{ cod.validation.failed_count }} failed</span>
+              </span>
+            </div>
+
+            <div *ngFor="let s of cod.samples; let j = index; trackBy: trackBySample"
+              class="tc-card"
+              [class.tc-pass]="cod.validation?.results?.[j]?.passed === true && !s.error"
+              [class.tc-fail]="cod.validation?.results?.[j]?.passed === false || !!s.error">
+
+              <div class="tc-header">
+                <label class="tc-label">
+                  <input type="checkbox" [(ngModel)]="s.isSelected" />
+                  <span>TC{{ j + 1 }}</span>
+                </label>
+
+                <span *ngIf="cod.validation?.results?.[j]" class="tc-val-icon"
+                  [class.tc-val-pass]="cod.validation.results[j].passed"
+                  [class.tc-val-fail]="!cod.validation.results[j].passed">
+                  {{ cod.validation.results[j].passed ? '✓' : '✗' }}
+                </span>
+
+                <div class="tc-meta">
+                  <select class="field-select micro-select" [(ngModel)]="s.difficulty" [disabled]="s.isSelected">
+                    <option>Easy</option><option>Medium</option><option>Hard</option>
+                  </select>
+                  <input *ngIf="!s.isSelected" type="number" class="field-input micro-input"
+                    [(ngModel)]="s.score" placeholder="Weight" min="0" max="100" />
+                </div>
+
+                <button class="icon-btn delete-btn" (click)="deleteSample(cod, j)" title="Remove">✕</button>
+              </div>
+
+              <div class="tc-io">
+                <div class="io-col">
+                  <div class="io-label">Input</div>
+                  <textarea class="io-textarea" [(ngModel)]="s.input" placeholder="Input…"></textarea>
+                </div>
+                <div class="io-col">
+                  <div class="io-label">
+                    Output
+                    <span *ngIf="s.execTimeMs" class="metric-tag">{{ s.execTimeMs }}ms</span>
+                    <span *ngIf="s.memBytes" class="metric-tag">{{ s.memBytes }}KB</span>
+                  </div>
+                  <div class="io-output-box"
+                    [class.io-pass]="cod.validation?.results?.[j]?.passed"
+                    [class.io-fail]="cod.validation?.results?.[j]?.passed === false">
+                    <pre *ngIf="s.output && !s.error">{{ s.output }}</pre>
+                    <pre *ngIf="s.error" class="out-error">{{ s.error }}</pre>
+                    <span *ngIf="!s.output && !s.error" class="io-placeholder">Not run yet</span>
+                  </div>
+                </div>
+              </div>
+
+              <button class="btn-run-sm" [disabled]="s.running" (click)="runSample(cod, s)">
+                {{ s.running ? 'Running…' : '▶ Run' }}
+              </button>
+            </div>
+
+            <button class="btn-add-tc" (click)="addSample(cod)">+ Add Test Case</button>
+          </div>
+
+          <!-- ── Upload ── -->
+          <div *ngIf="cod.solutionGenerated" class="upload-row">
+            <button class="btn-upload" [disabled]="cod.upload" (click)="uploadCOD(cod)">
+              {{ cod.upload ? '✓ Uploaded to Platform' : '↑ Upload to Platform' }}
+            </button>
+          </div>
+
+        </div><!-- /q-card-body -->
+      </div><!-- /q-card -->
+    </div><!-- /questions-section -->
+
+    <!-- Empty state -->
+    <div *ngIf="!cods.length && !loading && !batchLoading" class="empty-state">
+      <div class="empty-icon">📝</div>
+      <div class="empty-title">No questions generated yet</div>
+      <div class="empty-sub">Configure your settings above and click <strong>Generate Problems</strong> or <strong>Generate &amp; Validate</strong> to begin.</div>
+    </div>
+
+  </main>
+</div>

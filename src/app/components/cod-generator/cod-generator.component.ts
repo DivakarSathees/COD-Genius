@@ -1,0 +1,388 @@
+import { CommonModule } from '@angular/common';
+import { HttpClientModule } from '@angular/common/http';
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MonacoEditorModule } from '@materia-ui/ngx-monaco-editor';
+import { NgSelectModule } from '@ng-select/ng-select';
+import { CodServiceService } from '../../services/cod-service.service';
+import { QuillEditorComponent } from 'ngx-quill';
+import { MatTooltipModule } from '@angular/material/tooltip';
+
+@Component({
+  selector: 'app-cod-generator',
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, HttpClientModule, MonacoEditorModule, NgSelectModule, QuillEditorComponent, MatTooltipModule],
+  templateUrl: './cod-generator.component.html',
+  styleUrl: './cod-generator.component.css'
+})
+export class CodGeneratorComponent implements OnInit {
+
+  sessions: any[] = [];
+  selectedSessionId = '';
+  newSession = true;
+  uniqueTopics: string[] = [];
+
+  questionBanks: any[] = [];
+  filteredQuestionBanks: any[] = [];
+  selectedCreator = '';
+  uniqueCreators: string[] = [];
+  selectedQbId: string | null = null;
+
+  subtopics: any[] = [];
+  cods: any[] = [];
+
+  promptForm: FormGroup;
+
+  loading = false;
+  batchLoading = false;
+  error = '';
+  success = '';
+
+  availableModels: { groq: any[]; azure: any[] } = { groq: [], azure: [] };
+  providerModels: any[] = [];
+
+  toolbarOptions = {
+    toolbar: [
+      ['bold', 'italic', 'underline'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['code-block'],
+      [{ header: [1, 2, 3, false] }]
+    ]
+  };
+
+  constructor(private fb: FormBuilder, private codService: CodServiceService) {
+    this.promptForm = this.fb.group({
+      prompt: [''],
+      token: ['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2Vyc19kb21haW5faWQiOjQzMTY0NzUsInVzZXJfaWQiOiJiZDNjMmY0ZC1iNTNkLTRkZTYtODJjOS0wMDQxM2I3MDc1NmMiLCJzY2hvb2xfaWQiOiJmZTY1MDJmMC1kZmU1LTRlYzMtYjE4MS0zZThlMzRiMTk4OTQiLCJlbWFpbCI6ImRpdmFrYXIuc0BpYW1uZW8uYWkiLCJlbWFpbF92ZXJpZmllZCI6MSwibmFtZSI6IkRpdmFrYXIkUyIsInBob25lIjoiOTg5NDE1NzYxOSIsInBob25lX3ZlcmlmaWVkIjowLCJwcm9maWxlX3BpYyI6bnVsbCwiZ2VuZGVyIjoiTWFsZSIsInJvbGxfbm8iOm51bGwsInBvcnRhbF9hY2Nlc3Nfc3RhdHVzIjpudWxsLCJlbWFpbF9yZXF1ZXN0ZWRfaGlzdG9yeSI6bnVsbCwiZW1haWxfcmVxdWVzdGVkIjpudWxsLCJwcmltYXJ5X2VtYWlsIjoiZGl2YWthci5zQGlhbW5lby5haSIsInBhcmVudF9jb250YWN0IjpudWxsLCJwaG9uZV9udW1iZXIiOnsiY29kZSI6Iis5MSIsIm51bWJlciI6OTg5NDE1NzYxOX0sImlzX2ZvbGxvd2luZ19wdWJsaWNfZmVlZCI6ZmFsc2UsImJhZGdlIjowLCJzdXBlcmJhZGdlIjowLCJjb25zdW1lZF9iYWRnZSI6MCwiY29uc3VtZWRfc3VwZXJiYWRnZSI6MCwibWFubnVhbGJhZGdlcyI6bnVsbCwic3RhdHVzIjoiSW52aXRlZCIsImRvYiI6bnVsbCwic3RhZmZfdHlwZSI6IkludGVybmFsIiwidmVyaWZpZWRfcGljIjpudWxsLCJhcHBsaWNhdGlvbl9ubyI6bnVsbCwiaGFzaF9pZCI6IjczOWM0Y2ZmNTc0OWQ2YTIzYzIzMTU2N2FmMmY3ODliZjM1ZmE5MTEiLCJyZXNldF9wYXNzd29yZCI6ZmFsc2UsImNyZWF0ZWRBdCI6IjIwMjMtMDctMjBUMTg6MTQ6NDIuMDAwWiIsInVwZGF0ZWRBdCI6IjIwMjQtMTItMTlUMTM6MTA6MzAuMDAwWiIsImRlbGV0ZWRBdCI6bnVsbCwicmVkaXNSb2xlIjoiU3RhZmYiLCJzZXNzaW9uSUQiOiJMZStYbXRMVlhGY1BwWEVpNDJsbXdRPT0iLCJlbmFibGVUd29GYWN0b3JBdXRoZW50aWNhdGlvbiI6ZmFsc2UsImlhdCI6MTc1NzE3NDk5NiwiZXhwIjoxNzU3MjE4MTk2fQ.KMwagd95-1rDRiMhWTnDBbobe7oN4WABWxHDbsTgcyo', Validators.required],
+      searchText: ['Dummy_testing_COD_creation'],
+      language: ['Java', Validators.required],
+      difficulty_level: ['Easy', Validators.required],
+      topic: ['', Validators.required],
+      format: ['detailed', Validators.required],
+      count: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
+      provider: ['groq', Validators.required],
+      model: [''],
+      qb_id: [''],
+      sub_topic_id: [''],
+      topic_id: [''],
+      subject_id: [''],
+      topic_name: [''],
+      subject_name: [''],
+    });
+  }
+
+  ngOnInit(): void {
+    this.getAllSessions();
+    this.loadModels();
+    this.promptForm.get('provider')!.valueChanges.subscribe(p => {
+      this.providerModels = this.availableModels[p as 'groq' | 'azure'] || [];
+      this.promptForm.patchValue({ model: this.providerModels[0]?.id || '' });
+    });
+  }
+
+  loadModels() {
+    this.codService.getModels().subscribe({
+      next: (res: any) => {
+        this.availableModels = res;
+        const currentProvider = this.promptForm.value.provider as 'groq' | 'azure';
+        this.providerModels = res[currentProvider] || [];
+        this.promptForm.patchValue({ model: this.providerModels[0]?.id || '' });
+      }
+    });
+  }
+
+  getAllSessions() {
+    this.codService.getAllSessions().subscribe({
+      next: (res: any) => { this.sessions = res.sessions || []; }
+    });
+  }
+
+  selectSession(session: any) {
+    this.newSession = false;
+    if (this.selectedSessionId === session._id) {
+      this.selectedSessionId = '';
+      sessionStorage.removeItem('codSessionId');
+      this.promptForm.get('language')?.enable();
+      this.promptForm.get('topic')?.enable();
+    } else {
+      this.selectedSessionId = session._id;
+      sessionStorage.setItem('codSessionId', session._id);
+      const parts = session.name.split(' - ');
+      const lang = parts[0];
+      const topic = parts.slice(1).join(' - ');
+      if (topic && !this.uniqueTopics.includes(topic)) this.uniqueTopics.push(topic);
+      this.promptForm.patchValue({ language: lang, topic });
+      this.promptForm.get('language')?.disable();
+      this.promptForm.get('topic')?.disable();
+    }
+  }
+
+  createNewSession() {
+    this.newSession = true;
+    this.selectedSessionId = '';
+    sessionStorage.removeItem('codSessionId');
+    this.promptForm.get('language')?.enable();
+    this.promptForm.get('topic')?.enable();
+  }
+
+  onSubtopicChangeById(sub_topic_id: any) {
+    const selected = this.subtopics.find(s => s.sub_topic_id === sub_topic_id);
+    if (selected) {
+      this.promptForm.patchValue({
+        sub_topic_id: selected.sub_topic_id,
+        topic_id: selected.topic.topic_id,
+        subject_id: selected.topic.subject.subject_id,
+        topic_name: selected.topic.name,
+        subject_name: selected.topic.subject.name,
+      });
+    }
+  }
+
+  customSearchFn = (term: string, item: any) => {
+    const t = term.toLowerCase();
+    return item.name.toLowerCase().includes(t) ||
+           item.topic?.name?.toLowerCase().includes(t) ||
+           item.topic?.subject?.name?.toLowerCase().includes(t);
+  };
+
+  filterByCreator() {
+    this.filteredQuestionBanks = this.selectedCreator
+      ? this.questionBanks.filter(qb => qb.createdBy === this.selectedCreator)
+      : [...this.questionBanks];
+  }
+
+  selectQB(qb: any) { this.selectedQbId = qb.qb_id; }
+
+  extractUniqueCreators() {
+    this.uniqueCreators = Array.from(new Set(this.questionBanks.map(qb => qb.createdBy).filter(Boolean)));
+  }
+
+  private makeCod(raw: any): any {
+    const langKey = (raw.language || 'java').toLowerCase();
+    const langMap: Record<string, string> = {
+      java: 'java', python: 'python', 'c#': 'csharp', csharp: 'csharp',
+      c: 'c', 'c++': 'cpp', javascript: 'javascript', typescript: 'typescript', go: 'go'
+    };
+    return {
+      ...raw,
+      solution: '',
+      samples: [],
+      validation: null,
+      solutionGenerated: false,
+      solutionVisible: false,
+      solutionGenerating: false,
+      solutionError: '',
+      collapsed: false,
+      input: '',
+      codeOutput: '',
+      outputerror: '',
+      runcode: false,
+      upload: false,
+      batchStatus: null,
+      editorOptions: { theme: 'vs-dark', language: langMap[langKey] || 'java' },
+    };
+  }
+
+  private fetchSideData() {
+    const token = this.promptForm.value.token;
+    this.codService.getQuestionBanks({ search: this.promptForm.value.searchText, authToken: token }).subscribe({
+      next: (res: any) => {
+        this.questionBanks = res.results?.questionbanks || [];
+        this.filteredQuestionBanks = [...this.questionBanks];
+        this.extractUniqueCreators();
+      }
+    });
+    this.codService.getTopics(token).subscribe({
+      next: (res: any) => {
+        this.subtopics = res.data || [];
+        if (this.subtopics.length > 0) {
+          const first = this.subtopics[0];
+          this.promptForm.patchValue({
+            sub_topic_id: first.sub_topic_id,
+            topic_id: first.topic.topic_id,
+            subject_id: first.topic.subject.subject_id,
+            topic_name: first.topic.name,
+            subject_name: first.topic.subject.name,
+          });
+        }
+      }
+    });
+  }
+
+  generateFromPrompt() {
+    if (this.loading) return;
+    this.loading = true;
+    this.error = '';
+    this.success = '';
+    const payload = { ...this.promptForm.getRawValue(), sessionId: sessionStorage.getItem('codSessionId') };
+    this.fetchSideData();
+    this.codService.generateCods(payload).subscribe({
+      next: (res: any) => {
+        sessionStorage.setItem('codSessionId', res.response.sessionId);
+        this.getAllSessions();
+        this.cods = (res.response.result || []).map((cod: any) => this.makeCod(cod));
+        this.loading = false;
+      },
+      error: () => {
+        this.error = 'Failed to generate problems. Please try again.';
+        this.loading = false;
+      }
+    });
+  }
+
+  generateBatch() {
+    if (this.batchLoading) return;
+    this.batchLoading = true;
+    this.error = '';
+    this.success = '';
+    const payload = {
+      ...this.promptForm.getRawValue(),
+      sessionId: sessionStorage.getItem('codSessionId'),
+      autoValidate: true,
+    };
+    this.fetchSideData();
+    this.codService.generateBatch(payload).subscribe({
+      next: (res: any) => {
+        sessionStorage.setItem('codSessionId', res.sessionId);
+        this.getAllSessions();
+        this.cods = (res.results || []).map((item: any) => {
+          const cod = this.makeCod(item.problem);
+          const validation = item.validation;
+          const samples = (item.solution?.samples || []).map((s: any, j: number) => {
+            const valResult = validation?.results?.[j];
+            return {
+              input: s.input,
+              output: valResult?.passed ? (valResult.actual_output ?? s.output) : s.output,
+              difficulty: s.difficulty,
+              score: s.score,
+              error: valResult && !valResult.passed
+                ? `Validation mismatch — Expected: "${s.output}" | Got: "${valResult.actual_output}"`
+                : '',
+              running: false,
+              isSelected: false,
+              execTimeMs: valResult?.execTimeMs,
+              memBytes: valResult?.memBytes ? String(valResult.memBytes) : '',
+            };
+          });
+          return { ...cod, solution: item.solution?.solution_data || '', samples, validation, solutionGenerated: !!item.solution, batchStatus: item.status };
+        });
+        this.batchLoading = false;
+      },
+      error: () => {
+        this.error = 'Batch generation failed. Please try again.';
+        this.batchLoading = false;
+      }
+    });
+  }
+
+  generateSolution(cod: any) {
+    cod.solutionGenerating = true;
+    cod.solutionError = '';
+    const { provider, model } = this.promptForm.getRawValue();
+    this.codService.generateSolution({ ...cod, provider, model }, true).subscribe({
+      next: (res: any) => {
+        cod.solution = res.response[0].solution_data;
+        cod.samples = (res.response[0].samples || []).map((s: any) => ({ ...s, error: '', running: false, isSelected: false }));
+        cod.validation = res.validation || null;
+        cod.solutionGenerated = true;
+        cod.solutionVisible = true;
+        cod.solutionGenerating = false;
+      },
+      error: () => {
+        cod.solutionError = 'Error generating solution. Please try again.';
+        cod.solutionGenerating = false;
+      }
+    });
+  }
+
+  runCode(cod: any) {
+    cod.runcode = true;
+    cod.codeOutput = '';
+    cod.outputerror = '';
+    this.codService.runCode({ code: cod.solution, input: cod.input, language: cod.language }).subscribe({
+      next: (res: any) => {
+        cod.codeOutput = res.output || '';
+        if (res.error) cod.outputerror = `${res.error}${res.details ? ': ' + res.details : ''}`;
+        cod.runcode = false;
+      },
+      error: () => { cod.outputerror = 'Error running code'; cod.runcode = false; }
+    });
+  }
+
+  runSample(cod: any, sample: any) {
+    sample.running = true;
+    sample.output = '';
+    sample.error = '';
+    this.codService.runCode({ code: cod.solution, input: sample.input, language: cod.language }).subscribe({
+      next: (res: any) => {
+        sample.output = res.output || '';
+        sample.execTimeMs = res.timeBytes || 0;
+        sample.memBytes = String(res.memBytes || '');
+        if (res.error) sample.error = `${res.error}${res.details ? ': ' + res.details : ''}`;
+        sample.running = false;
+      },
+      error: () => { sample.error = 'Error executing code'; sample.running = false; }
+    });
+  }
+
+  addSample(cod: any) {
+    cod.samples.push({ input: '', output: '', error: '', running: false, isSelected: false, score: 0, difficulty: 'Easy' });
+  }
+
+  deleteSample(cod: any, index: number) { cod.samples.splice(index, 1); }
+
+  uploadCOD(cod: any) {
+    this.success = '';
+    this.error = '';
+    if (cod.samples.some((s: any) => s.error)) {
+      this.error = 'Please resolve all sample errors before uploading.'; return;
+    }
+    if (cod.samples.some((s: any) => !s.output)) {
+      this.error = 'Please run all samples before uploading, or remove unused test cases.'; return;
+    }
+    const testcases = cod.samples.filter((s: any) => !s.isSelected).map((s: any) => ({
+      input: s.input, output: s.output, memBytes: s.memBytes || '0', timeBytes: s.execTimeMs || 0,
+      difficulty: s.difficulty || 'Medium', score: s.score || 0, timeLimit: null, outputLimit: null, memoryLimit: null
+    }));
+    const totalScore = testcases.reduce((sum: number, tc: any) => sum + Number(tc.score || 0), 0);
+    if (totalScore !== 100) { this.error = `Test case scores must total 100. Currently: ${totalScore}`; return; }
+    const sampleIo = cod.samples.filter((s: any) => s.isSelected).map((s: any) => ({
+      input: s.input, output: s.output, memBytes: s.memBytes || '0', timeBytes: s.execTimeMs || 0,
+      sample: 'Yes', difficulty: ' - ', score: ' - ', timeLimit: null, outputLimit: null, memoryLimit: null
+    }));
+    if (sampleIo.length === 0) { this.error = 'Please mark at least one test case as sample I/O before uploading.'; return; }
+    const vals = this.promptForm.getRawValue();
+    const payload = {
+      question_type: 'programming', question_data: cod.question_data, question_editor_type: 1,
+      multilanguage: [cod.language], inputformat: cod.inputformat, outputformat: cod.outputformat,
+      enablecustominput: true, line_token_evaluation: false,
+      codeconstraints: null, timelimit: null, memorylimit: null, codesize: null,
+      setLimit: false, enable_api: false, outputLimit: null,
+      subject_id: vals.subject_id || '',
+      blooms_taxonomy: null, course_outcome: null, program_outcome: null, hint: [],
+      manual_difficulty: cod.manual_difficulty || 'Medium',
+      solution: [{ language: cod.language, whitelist: [{ list: [] }], hasSnippet: false,
+        solutiondata: [{ solution: cod.solution || '', solutionExp: null, solutionbest: true, isSolutionExp: false, solutionDebug: null }],
+        hideHeader: false, hideFooter: false }],
+      testcases,
+      topic_id: vals.topic_id || '', sub_topic_id: vals.sub_topic_id || '',
+      linked_concepts: '', tags: [''], sample_io: JSON.stringify(sampleIo),
+      question_media: [], pcm_combination_ids: [''],
+      qb_id: this.selectedQbId || vals.qb_id || '',
+      createdBy: '', imported: 'is_imported_question'
+    };
+    this.codService.uploadCods(payload, this.promptForm.value.token).subscribe({
+      next: (res: any) => {
+        if (res.response[0].status === 'Uploaded') { cod.upload = true; this.success = 'Question uploaded successfully!'; }
+        else this.error = 'Upload failed. Please try again.';
+      },
+      error: (err: any) => { this.error = 'Upload error: ' + (err.error?.message || 'Unknown error'); }
+    });
+  }
+
+  difficultyColor(d: string): string {
+    return d === 'Hard' ? '#ef4444' : d === 'Medium' ? '#f59e0b' : '#10b981';
+  }
+
+  trackByCod(index: number): number { return index; }
+  trackBySample(index: number): number { return index; }
+}
