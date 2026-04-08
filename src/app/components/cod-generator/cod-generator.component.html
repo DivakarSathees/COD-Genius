@@ -34,7 +34,7 @@
             <div class="session-date">{{ session.createdAt | date:'MMM d, y' }}</div>
           </div>
         </div>
-        <div *ngIf="!sessions?.length" class="no-sessions">
+        <div *ngIf="!sessions.length" class="no-sessions">
           No sessions yet.<br>Create one to get started.
         </div>
       </div>
@@ -113,6 +113,8 @@
             <select class="field-select" formControlName="provider">
               <option value="groq">Groq (Llama)</option>
               <option value="azure">Azure OpenAI (GPT)</option>
+              <option value="gemini">Google Gemini</option>
+              <option value="github">GitHub Models</option>
             </select>
           </div>
           <div class="form-field flex-2">
