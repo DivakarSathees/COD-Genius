@@ -48,6 +48,7 @@ export class CodServiceService {
     if (code.language === 'Python') return this.http.post(`${this.apiUrl}/run-python`, code);
     if (code.language === 'C#' || code.language === 'csharp') return this.http.post(`${this.apiUrl}/run-csharp`, code);
     if (code.language === 'C') return this.http.post(`${this.apiUrl}/run-c`, code);
+    if (code.language === 'C++' || code.language === 'cpp') return this.http.post(`${this.apiUrl}/run-cpp`, code);
     return this.http.post(`${this.apiUrl}/run-java`, code);
   }
 
