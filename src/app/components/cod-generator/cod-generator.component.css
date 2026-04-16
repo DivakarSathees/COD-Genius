@@ -166,6 +166,11 @@
 .field-examples { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
 .examples-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--c-text-muted); opacity: .7; }
 .example-chip { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(99,102,241,.12); color: #818cf8; border: 1px solid rgba(99,102,241,.25); cursor: pointer; transition: background .15s, color .15s; white-space: nowrap; }
+.qb-search-row { display: flex; gap: 6px; align-items: center; }
+.qb-search-row .field-input { flex: 1; min-width: 0; }
+.btn-qb-search { flex-shrink: 0; padding: 0 14px; height: 36px; font-size: 12px; font-weight: 600; border-radius: 6px; border: none; background: rgba(99,102,241,.2); color: #818cf8; cursor: pointer; transition: background .15s; white-space: nowrap; }
+.btn-qb-search:hover:not(:disabled) { background: rgba(99,102,241,.35); }
+.btn-qb-search:disabled { opacity: .5; cursor: not-allowed; }
 .example-chip:hover { background: rgba(99,102,241,.25); color: #a5b4fc; }
 
 .field-input, .field-select, .field-textarea {

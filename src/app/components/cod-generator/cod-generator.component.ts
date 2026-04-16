@@ -185,6 +185,32 @@ export class CodGeneratorComponent implements OnInit {
     };
   }
 
+  qbSearching = false;
+
+  searchQB() {
+    const { token, searchText } = this.promptForm.value;
+    if (!token?.trim()) {
+      this.toastr.warning('Auth Token is required to search question banks.', 'Validation Failed'); return;
+    }
+    if (!searchText?.trim()) {
+      this.toastr.warning('Enter a QB Search text first.', 'Validation Failed'); return;
+    }
+    this.qbSearching = true;
+    this.codService.getQuestionBanks({ search: searchText, authToken: token }).subscribe({
+      next: (res: any) => {
+        this.questionBanks = res.results?.questionbanks || [];
+        this.filteredQuestionBanks = [...this.questionBanks];
+        this.extractUniqueCreators();
+        this.qbSearching = false;
+        this.toastr.success(`${this.questionBanks.length} question bank(s) found.`, 'QB Search');
+      },
+      error: () => {
+        this.toastr.error('Failed to fetch question banks.', 'QB Search');
+        this.qbSearching = false;
+      }
+    });
+  }
+
   private fetchSideData() {
     const token = this.promptForm.value.token;
     this.codService.getQuestionBanks({ search: this.promptForm.value.searchText, authToken: token }).subscribe({
@@ -377,6 +403,28 @@ export class CodGeneratorComponent implements OnInit {
 
   setPrompt(text: string) {
     this.promptForm.patchValue({ prompt: text });
+  }
+
+  toggleSampleSelection(cod: any, sample: any) {
+    sample.isSelected = !sample.isSelected;
+    this.redistributeScores(cod);
+  }
+
+  private redistributeScores(cod: any) {
+    const scorable = cod.samples.filter((s: any) => !s.isSelected);
+    if (scorable.length === 0) return;
+
+    const difficultyWeight: Record<string, number> = { Easy: 1, Medium: 2, Hard: 3 };
+    const totalUnits = scorable.reduce((sum: number, s: any) =>
+      sum + (difficultyWeight[(s.difficulty as string)] ?? 1), 0);
+
+    let assigned = 0;
+    scorable.forEach((s: any, i: number) => {
+      const units = difficultyWeight[(s.difficulty as string)] ?? 1;
+      const isLast = i === scorable.length - 1;
+      s.score = isLast ? (100 - assigned) : Math.floor((units / totalUnits) * 100);
+      assigned += s.score;
+    });
   }
 
   addSample(cod: any) {

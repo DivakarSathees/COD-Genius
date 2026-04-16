@@ -147,7 +147,13 @@
           </div>
           <div class="form-field">
             <label class="field-label">QB Search</label>
-            <input class="field-input" type="text" formControlName="searchText" placeholder="Question bank name" />
+            <div class="qb-search-row">
+              <input class="field-input" type="text" formControlName="searchText" placeholder="Question bank name" />
+              <button type="button" class="btn btn-qb-search" [disabled]="qbSearching" (click)="searchQB()">
+                <span *ngIf="!qbSearching">Search</span>
+                <span *ngIf="qbSearching" class="loading-text"><span class="dot-spinner"></span></span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -374,7 +380,7 @@
 
               <div class="tc-header">
                 <label class="tc-label">
-                  <input type="checkbox" [(ngModel)]="s.isSelected" />
+                  <input type="checkbox" [checked]="s.isSelected" (change)="toggleSampleSelection(cod, s)" />
                   <span>TC{{ j + 1 }}</span>
                 </label>
 
