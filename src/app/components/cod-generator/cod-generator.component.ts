@@ -53,7 +53,7 @@ export class CodGeneratorComponent implements OnInit {
 
   constructor(private fb: FormBuilder, private codService: CodServiceService, private authService: AuthService, private toastr: ToastrService) {
     this.promptForm = this.fb.group({
-      prompt: [''],
+      prompt: ['', Validators.required],
       token: ['', Validators.required],
       searchText: ['', Validators.required],
       language: ['Java', Validators.required],
@@ -213,6 +213,16 @@ export class CodGeneratorComponent implements OnInit {
 
   generateFromPrompt() {
     if (this.loading) return;
+    const { token, searchText, prompt } = this.promptForm.value;
+    if (!prompt?.trim()) {
+      this.toastr.warning('Prompt is required before generating problems.', 'Validation Failed'); return;
+    }
+    if (!token?.trim()) {
+      this.toastr.warning('Auth Token is required before generating problems.', 'Validation Failed'); return;
+    }
+    if (!searchText?.trim()) {
+      this.toastr.warning('QB Search text is required before generating problems.', 'Validation Failed'); return;
+    }
     this.loading = true;
     const payload = { ...this.promptForm.getRawValue(), sessionId: sessionStorage.getItem('codSessionId') };
     this.fetchSideData();
@@ -233,6 +243,16 @@ export class CodGeneratorComponent implements OnInit {
 
   generateBatch() {
     if (this.batchLoading) return;
+    const { token, searchText, prompt } = this.promptForm.value;
+    if (!prompt?.trim()) {
+      this.toastr.warning('Prompt is required before generating problems.', 'Validation Failed'); return;
+    }
+    if (!token?.trim()) {
+      this.toastr.warning('Auth Token is required before generating problems.', 'Validation Failed'); return;
+    }
+    if (!searchText?.trim()) {
+      this.toastr.warning('QB Search text is required before generating problems.', 'Validation Failed'); return;
+    }
     this.batchLoading = true;
     const payload = {
       ...this.promptForm.getRawValue(),
@@ -262,6 +282,7 @@ export class CodGeneratorComponent implements OnInit {
                 : '',
               running: false,
               isSelected: false,
+              hasRun: !!valResult,
               execTimeMs: valResult?.execTimeMs,
               memBytes: valResult?.memBytes ? String(valResult.memBytes) : '',
             };
@@ -284,7 +305,7 @@ export class CodGeneratorComponent implements OnInit {
     this.codService.generateSolution({ ...cod, provider, model }, true).subscribe({
       next: (res: any) => {
         cod.solution = res.response[0].solution_data;
-        cod.samples = (res.response[0].samples || []).map((s: any) => ({ ...s, error: '', running: false, isSelected: false }));
+        cod.samples = (res.response[0].samples || []).map((s: any) => ({ ...s, error: '', running: false, isSelected: false, hasRun: false }));
         cod.validation = res.validation || null;
         cod.solutionGenerated = true;
         cod.solutionVisible = true;
@@ -322,9 +343,10 @@ export class CodGeneratorComponent implements OnInit {
         sample.execTimeMs = res.timeBytes || 0;
         sample.memBytes = String(res.memBytes || '');
         if (res.error) sample.error = `${res.error}${res.details ? ': ' + res.details : ''}`;
+        sample.hasRun = true;
         sample.running = false;
       },
-      error: () => { sample.error = 'Error executing code'; sample.running = false; }
+      error: () => { sample.error = 'Error executing code'; sample.hasRun = true; sample.running = false; }
     });
   }
 
@@ -342,28 +364,33 @@ export class CodGeneratorComponent implements OnInit {
             sample.execTimeMs = res.execTimeMs || 0;
             sample.memBytes = String(res.memBytes || '');
             if (res.error) sample.error = `${res.error}${res.details ? ': ' + res.details : ''}`;
+            sample.hasRun = true;
             sample.running = false;
             resolve();
           },
-          error: () => { sample.error = 'Error executing code'; sample.running = false; resolve(); }
+          error: () => { sample.error = 'Error executing code'; sample.hasRun = true; sample.running = false; resolve(); }
         });
       });
     }
     cod.runningAll = false;
   }
 
+  setPrompt(text: string) {
+    this.promptForm.patchValue({ prompt: text });
+  }
+
   addSample(cod: any) {
-    cod.samples.push({ input: '', output: '', error: '', running: false, isSelected: false, score: 0, difficulty: 'Easy' });
+    cod.samples.push({ input: '', output: '', error: '', running: false, isSelected: false, score: 0, difficulty: 'Easy', hasRun: false });
   }
 
   deleteSample(cod: any, index: number) { cod.samples.splice(index, 1); }
 
   uploadCOD(cod: any) {
+    if (cod.samples.some((s: any) => !s.hasRun)) {
+      this.toastr.warning('Please run all test cases at least once before uploading. Use "▶▶ Run All" to execute them.', 'Tests Not Run'); return;
+    }
     if (cod.samples.some((s: any) => s.error)) {
       this.toastr.warning('Please resolve all sample errors before uploading.', 'Validation Failed'); return;
-    }
-    if (cod.samples.some((s: any) => !s.output)) {
-      this.toastr.warning('Please run all samples before uploading, or remove unused test cases.', 'Validation Failed'); return;
     }
     if (!this.selectedQbId && !this.promptForm.value.qb_id) {
       this.toastr.warning('Please select a Question Bank from the dropdown or enter a valid QB ID in the form.', 'Validation Failed'); return;

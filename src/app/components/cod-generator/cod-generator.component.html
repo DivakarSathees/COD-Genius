@@ -126,11 +126,17 @@
           </div>
         </div>
 
-        <!-- Prompt (new session) -->
-        <div class="form-field full-width" *ngIf="newSession">
-          <label class="field-label">Custom Prompt <span class="field-hint">(optional — leave blank for auto-generated)</span></label>
+        <!-- Prompt -->
+        <div class="form-field full-width">
+          <label class="field-label">Prompt <span class="required-star">*</span></label>
           <textarea class="field-textarea" formControlName="prompt" rows="3"
-            placeholder="Describe what kind of problem to generate..."></textarea>
+            placeholder="e.g. Generate a Medium difficulty Java problem on Arrays — find the maximum subarray sum using Kadane's algorithm. Input: array of integers, Output: single integer. Detailed format."></textarea>
+          <div class="field-examples">
+            <span class="examples-label">Examples:</span>
+            <span class="example-chip" (click)="setPrompt('Generate an Easy Python problem on String manipulation — reverse words in a sentence. Input: a string, Output: reversed string. Simple format.')">Easy · Python · Strings</span>
+            <span class="example-chip" (click)="setPrompt('Generate a Medium Java problem on Binary Search Trees — find the lowest common ancestor of two nodes. Input: tree nodes, Output: LCA node value. Detailed format.')">Medium · Java · BST</span>
+            <span class="example-chip" (click)="setPrompt('Generate a Hard C++ problem on Dynamic Programming — longest increasing subsequence with constraints n ≤ 10000. Input: array of integers, Output: length of LIS. Detailed format.')">Hard · C++ · DP</span>
+          </div>
         </div>
 
         <!-- Row 2: Platform credentials -->
@@ -335,7 +341,7 @@
 
               <!-- Manual run -->
               <div class="run-row">
-                <textarea class="run-input" [(ngModel)]="cod.input" placeholder="Custom input (optional)…"></textarea>
+                <textarea class="run-input" [(ngModel)]="cod.input" placeholder="Custom input…"></textarea>
                 <button class="btn btn-run" [disabled]="cod.runcode" (click)="runCode(cod)">
                   {{ cod.runcode ? 'Running…' : '▶ Run' }}
                 </button>
