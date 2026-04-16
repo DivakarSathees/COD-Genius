@@ -55,7 +55,7 @@ export class CodGeneratorComponent implements OnInit {
     this.promptForm = this.fb.group({
       prompt: [''],
       token: ['', Validators.required],
-      searchText: ['Dummy_testing_COD_creation'],
+      searchText: ['', Validators.required],
       language: ['Java', Validators.required],
       difficulty_level: ['Easy', Validators.required],
       topic: ['', Validators.required],
