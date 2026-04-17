@@ -61,7 +61,7 @@ export class CodGeneratorComponent implements OnInit {
       topic: ['', Validators.required],
       format: ['detailed', Validators.required],
       count: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
-      provider: ['groq', Validators.required],
+      provider: ['gemini', Validators.required],
       model: [''],
       qb_id: [''],
       sub_topic_id: [''],
