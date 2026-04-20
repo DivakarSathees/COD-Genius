@@ -178,7 +178,8 @@
             <span class="guidelines-editor-title">Question Guidelines</span>
             <span class="guidelines-editor-hint">Edits here apply to this session only and are passed to all AI calls.</span>
           </div>
-          <textarea class="guidelines-textarea" [(ngModel)]="guidelinesText"
+          <textarea class="guidelines-textarea"
+            [ngModelOptions]="{standalone: true}" [(ngModel)]="guidelinesText"
             placeholder="Guidelines will be loaded here…" rows="18" spellcheck="false"></textarea>
         </div>
 
