@@ -52,6 +52,10 @@ export class CodServiceService {
     return this.http.post(`${this.apiUrl}/refine-cod`, data);
   }
 
+  getGuidelines(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/guidelines`);
+  }
+
   runCode(code: any): Observable<any> {
     if (code.language === 'Python') return this.http.post(`${this.apiUrl}/run-python`, code);
     if (code.language === 'C#' || code.language === 'csharp') return this.http.post(`${this.apiUrl}/run-csharp`, code);

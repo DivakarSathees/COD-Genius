@@ -169,6 +169,13 @@
 .guidelines-toggle-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; background: rgba(99,102,241,.07); border: 1px solid rgba(99,102,241,.18); margin-bottom: 4px; }
 .guidelines-toggle-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--c-text); user-select: none; }
 .guidelines-toggle-label input[type="checkbox"] { width: 16px; height: 16px; accent-color: #818cf8; cursor: pointer; }
+.btn-guidelines-edit { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; font-size: 12px; font-weight: 600; border-radius: 6px; border: 1px solid rgba(99,102,241,.35); background: rgba(99,102,241,.1); color: #818cf8; cursor: pointer; transition: background .15s; white-space: nowrap; }
+.btn-guidelines-edit:hover { background: rgba(99,102,241,.22); }
+.guidelines-editor-panel { margin-bottom: 8px; border: 1px solid rgba(99,102,241,.25); border-radius: 8px; overflow: hidden; }
+.guidelines-editor-header { display: flex; align-items: baseline; gap: 10px; padding: 9px 14px; background: rgba(99,102,241,.08); border-bottom: 1px solid rgba(99,102,241,.15); }
+.guidelines-editor-title { font-size: 13px; font-weight: 700; color: #818cf8; }
+.guidelines-editor-hint { font-size: 11px; color: var(--c-text-muted); }
+.guidelines-textarea { display: block; width: 100%; box-sizing: border-box; padding: 12px 14px; font-size: 12px; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; line-height: 1.6; color: var(--c-text); background: #fafbff; border: none; resize: vertical; min-height: 260px; outline: none; }
 .toggle-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #818cf8; color: #fff; letter-spacing: .4px; text-transform: uppercase; }
 .guidelines-hint { font-size: 11px; color: var(--c-text-muted); opacity: .75; }
 .qb-search-row { display: flex; gap: 6px; align-items: center; }

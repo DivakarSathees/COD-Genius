@@ -36,6 +36,9 @@ export class CodGeneratorComponent implements OnInit {
   loading = false;
   batchLoading = false;
   useGuidelines = false;
+  guidelinesText = '';
+  guidelinesEditorOpen = false;
+  guidelinesLoading = false;
 
   availableModels: { groq: any[]; azure: any[] } = { groq: [], azure: [] };
   providerModels: any[] = [];
@@ -91,6 +94,21 @@ export class CodGeneratorComponent implements OnInit {
         this.promptForm.patchValue({ model: this.providerModels[0]?.id || '' });
       }
     });
+  }
+
+  toggleGuidelines() {
+    this.useGuidelines = !this.useGuidelines;
+    if (this.useGuidelines && !this.guidelinesText) {
+      this.guidelinesLoading = true;
+      this.codService.getGuidelines().subscribe({
+        next: (res: any) => { this.guidelinesText = res.content || ''; this.guidelinesLoading = false; },
+        error: () => { this.guidelinesLoading = false; this.toastr.error('Failed to load guidelines.', 'Error'); }
+      });
+    }
+  }
+
+  get activeGuidelinesContent(): string | null {
+    return this.useGuidelines ? this.guidelinesText : null;
   }
 
   getAllSessions() {
@@ -255,7 +273,7 @@ export class CodGeneratorComponent implements OnInit {
       this.toastr.warning('QB Search text is required before generating problems.', 'Validation Failed'); return;
     }
     this.loading = true;
-    const payload = { ...this.promptForm.getRawValue(), sessionId: sessionStorage.getItem('codSessionId'), useGuidelines: this.useGuidelines };
+    const payload = { ...this.promptForm.getRawValue(), sessionId: sessionStorage.getItem('codSessionId'), useGuidelines: this.useGuidelines, guidelinesContent: this.activeGuidelinesContent };
     this.fetchSideData();
     this.codService.generateCods(payload).subscribe({
       next: (res: any) => {
@@ -290,6 +308,7 @@ export class CodGeneratorComponent implements OnInit {
       sessionId: sessionStorage.getItem('codSessionId'),
       autoValidate: true,
       useGuidelines: this.useGuidelines,
+      guidelinesContent: this.activeGuidelinesContent,
     };
     this.fetchSideData();
     this.codService.generateBatch(payload).subscribe({
@@ -334,7 +353,7 @@ export class CodGeneratorComponent implements OnInit {
     cod.solutionGenerating = true;
     cod.solutionError = '';
     const { provider, model } = this.promptForm.getRawValue();
-    this.codService.generateSolution({ ...cod, provider, model, useGuidelines: this.useGuidelines }, true).subscribe({
+    this.codService.generateSolution({ ...cod, provider, model, useGuidelines: this.useGuidelines, guidelinesContent: this.activeGuidelinesContent }, true).subscribe({
       next: (res: any) => {
         cod.solution = res.response[0].solution_data;
         cod.samples = (res.response[0].samples || []).map((s: any) => ({ ...s, error: '', running: false, isSelected: this.useGuidelines ? (s.isSampleIO === true) : false, hasRun: false }));
@@ -366,6 +385,7 @@ export class CodGeneratorComponent implements OnInit {
       provider,
       model,
       useGuidelines: this.useGuidelines,
+      guidelinesContent: this.activeGuidelinesContent,
     }).subscribe({
       next: (res: any) => {
         const data = res.response;
@@ -485,6 +505,7 @@ export class CodGeneratorComponent implements OnInit {
       provider,
       model,
       useGuidelines: this.useGuidelines,
+      guidelinesContent: this.activeGuidelinesContent,
     }).subscribe({
       next: (res: any) => {
         const updated = res.response;
