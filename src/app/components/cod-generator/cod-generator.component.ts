@@ -182,6 +182,8 @@ export class CodGeneratorComponent implements OnInit {
       runningAll: false,
       tcRegenerating: false,
       tcCount: 15,
+      refinePrompt: '',
+      refining: false,
       upload: false,
       batchStatus: null,
       editorOptions: { theme: 'vs-dark', language: langMap[langKey] || 'java' },
@@ -335,7 +337,7 @@ export class CodGeneratorComponent implements OnInit {
     this.codService.generateSolution({ ...cod, provider, model, useGuidelines: this.useGuidelines }, true).subscribe({
       next: (res: any) => {
         cod.solution = res.response[0].solution_data;
-        cod.samples = (res.response[0].samples || []).map((s: any) => ({ ...s, error: '', running: false, isSelected: false, hasRun: false }));
+        cod.samples = (res.response[0].samples || []).map((s: any) => ({ ...s, error: '', running: false, isSelected: this.useGuidelines ? (s.isSampleIO === true) : false, hasRun: false }));
         cod.validation = res.validation || null;
         cod.solutionGenerated = true;
         cod.solutionVisible = true;
@@ -353,7 +355,7 @@ export class CodGeneratorComponent implements OnInit {
     if (!cod.solution) {
       this.toastr.warning('Generate a solution first before regenerating test cases.', 'No Solution'); return;
     }
-    const count = cod.tcCount || 15;
+    const count = this.useGuidelines ? 6 : (cod.tcCount || 15);
     cod.tcRegenerating = true;
     const { provider, model } = this.promptForm.getRawValue();
     this.codService.regenerateTestcases({
@@ -465,6 +467,42 @@ export class CodGeneratorComponent implements OnInit {
 
   setPrompt(text: string) {
     this.promptForm.patchValue({ prompt: text });
+  }
+
+  refineQuestion(cod: any) {
+    if (!cod.refinePrompt?.trim()) {
+      this.toastr.warning('Enter a refine instruction before updating.', 'Input Required'); return;
+    }
+    cod.refining = true;
+    const { provider, model } = this.promptForm.getRawValue();
+    this.codService.refineCod({
+      question_data: cod.question_data,
+      inputformat: cod.inputformat,
+      outputformat: cod.outputformat,
+      constraints: cod.constraints,
+      language: cod.language,
+      refine_prompt: cod.refinePrompt,
+      provider,
+      model,
+      useGuidelines: this.useGuidelines,
+    }).subscribe({
+      next: (res: any) => {
+        const updated = res.response;
+        cod.question_data = updated.question_data ?? cod.question_data;
+        cod.inputformat = updated.inputformat ?? cod.inputformat;
+        cod.outputformat = updated.outputformat ?? cod.outputformat;
+        cod.constraints = updated.constraints ?? cod.constraints;
+        cod.manual_difficulty = updated.manual_difficulty ?? cod.manual_difficulty;
+        cod.language = updated.language ?? cod.language;
+        cod.refinePrompt = '';
+        cod.refining = false;
+        this.toastr.success('Question updated successfully.', 'Refined');
+      },
+      error: (err: any) => {
+        this.toastr.error(err.error?.error || 'Failed to refine question.', 'Error');
+        cod.refining = false;
+      }
+    });
   }
 
   toggleSampleSelection(cod: any, sample: any) {

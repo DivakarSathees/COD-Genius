@@ -394,6 +394,17 @@
 .btn-regen-tc:disabled { opacity: .5; cursor: not-allowed; }
 .btn-regen-tc .dot-spinner { border-top-color: #c084fc; width: 11px; height: 11px; }
 
+/* === Refine Question === */
+.refine-section { background: rgba(245,158,11,.05); border: 1px solid rgba(245,158,11,.2); border-radius: 8px; padding: 12px 14px; }
+.refine-hint { font-size: 11px; font-weight: 400; color: var(--c-text-muted); margin-left: 8px; }
+.refine-row { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; }
+.refine-textarea { flex: 1; resize: vertical; min-height: 54px; font-size: 13px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--c-border); background: var(--c-card); color: var(--c-text); line-height: 1.4; }
+.refine-textarea:focus { outline: none; border-color: var(--c-warning); box-shadow: 0 0 0 3px rgba(245,158,11,.12); }
+.btn-refine { display: inline-flex; align-items: center; gap: 5px; padding: 0 14px; height: 36px; font-size: 12px; font-weight: 600; border-radius: 6px; border: none; background: rgba(245,158,11,.18); color: #d97706; cursor: pointer; transition: background .15s; white-space: nowrap; flex-shrink: 0; }
+.btn-refine:hover:not(:disabled) { background: rgba(245,158,11,.32); }
+.btn-refine:disabled { opacity: .5; cursor: not-allowed; }
+.btn-refine .dot-spinner { border-top-color: #d97706; width: 11px; height: 11px; }
+
 /* === Quill === */
 .quill-field {
   border: 1px solid var(--c-border);

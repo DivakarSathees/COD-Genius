@@ -332,6 +332,20 @@
             </select>
           </div>
 
+          <!-- ── Refine Question ── -->
+          <div class="card-section refine-section">
+            <div class="sub-label">Refine Question <span class="refine-hint">Describe how to update this question</span></div>
+            <div class="refine-row">
+              <textarea class="field-input refine-textarea" [(ngModel)]="cod.refinePrompt"
+                placeholder="e.g. Make it harder, change the scenario to banking, add OOP class design requirements…"
+                rows="2"></textarea>
+              <button class="btn-refine" [disabled]="cod.refining" (click)="refineQuestion(cod)">
+                <span *ngIf="!cod.refining">✎ Update</span>
+                <span *ngIf="cod.refining" class="loading-text"><span class="dot-spinner"></span> Updating…</span>
+              </button>
+            </div>
+          </div>
+
           <!-- ── Solution ── -->
           <div class="divider-label">Solution</div>
 
@@ -385,7 +399,10 @@
               </span>
               <div class="tc-actions">
                 <div class="tc-regen-group">
-                  <input type="number" class="field-input tc-count-input" [(ngModel)]="cod.tcCount"
+                  <input type="number" class="field-input tc-count-input"
+                    [value]="useGuidelines ? 6 : cod.tcCount"
+                    (change)="useGuidelines ? null : (cod.tcCount = +$any($event.target).value)"
+                    [disabled]="useGuidelines"
                     min="1" max="50" placeholder="Count" title="Number of test cases to generate" />
                   <button class="btn-regen-tc" [disabled]="cod.tcRegenerating || cod.runningAll" (click)="regenerateTestcases(cod)">
                     <span *ngIf="!cod.tcRegenerating">↺ Regenerate TCs</span>
