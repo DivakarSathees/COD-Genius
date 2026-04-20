@@ -157,6 +157,16 @@
           </div>
         </div>
 
+        <!-- Guidelines toggle -->
+        <div class="guidelines-toggle-row">
+          <label class="guidelines-toggle-label">
+            <input type="checkbox" [checked]="useGuidelines" (change)="useGuidelines = !useGuidelines" />
+            <span class="toggle-text">Use Question Guidelines</span>
+            <span class="toggle-badge" *ngIf="useGuidelines">Active</span>
+          </label>
+          <span class="guidelines-hint">Enforces strict QC rules: named character, Line X format, no solution comments, 6 TCs with ascending weightage.</span>
+        </div>
+
         <!-- Actions -->
         <div class="form-actions">
           <button type="button" class="btn btn-primary"
@@ -304,6 +314,12 @@
               <div class="sub-label">Output Format</div>
               <quill-editor [(ngModel)]="cod.outputformat" [modules]="toolbarOptions" theme="snow" class="quill-field quill-sm"></quill-editor>
             </div>
+          </div>
+
+          <!-- Constraints -->
+          <div class="card-section">
+            <div class="sub-label">Constraints</div>
+            <quill-editor [(ngModel)]="cod.constraints" [modules]="toolbarOptions" theme="snow" class="quill-field quill-sm"></quill-editor>
           </div>
 
           <!-- Difficulty -->

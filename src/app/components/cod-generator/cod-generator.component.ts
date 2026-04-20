@@ -35,6 +35,7 @@ export class CodGeneratorComponent implements OnInit {
 
   loading = false;
   batchLoading = false;
+  useGuidelines = false;
 
   availableModels: { groq: any[]; azure: any[] } = { groq: [], azure: [] };
   providerModels: any[] = [];
@@ -252,7 +253,7 @@ export class CodGeneratorComponent implements OnInit {
       this.toastr.warning('QB Search text is required before generating problems.', 'Validation Failed'); return;
     }
     this.loading = true;
-    const payload = { ...this.promptForm.getRawValue(), sessionId: sessionStorage.getItem('codSessionId') };
+    const payload = { ...this.promptForm.getRawValue(), sessionId: sessionStorage.getItem('codSessionId'), useGuidelines: this.useGuidelines };
     this.fetchSideData();
     this.codService.generateCods(payload).subscribe({
       next: (res: any) => {
@@ -286,6 +287,7 @@ export class CodGeneratorComponent implements OnInit {
       ...this.promptForm.getRawValue(),
       sessionId: sessionStorage.getItem('codSessionId'),
       autoValidate: true,
+      useGuidelines: this.useGuidelines,
     };
     this.fetchSideData();
     this.codService.generateBatch(payload).subscribe({
@@ -330,7 +332,7 @@ export class CodGeneratorComponent implements OnInit {
     cod.solutionGenerating = true;
     cod.solutionError = '';
     const { provider, model } = this.promptForm.getRawValue();
-    this.codService.generateSolution({ ...cod, provider, model }, true).subscribe({
+    this.codService.generateSolution({ ...cod, provider, model, useGuidelines: this.useGuidelines }, true).subscribe({
       next: (res: any) => {
         cod.solution = res.response[0].solution_data;
         cod.samples = (res.response[0].samples || []).map((s: any) => ({ ...s, error: '', running: false, isSelected: false, hasRun: false }));
@@ -361,6 +363,7 @@ export class CodGeneratorComponent implements OnInit {
       count,
       provider,
       model,
+      useGuidelines: this.useGuidelines,
     }).subscribe({
       next: (res: any) => {
         const data = res.response;
@@ -517,8 +520,9 @@ export class CodGeneratorComponent implements OnInit {
     const payload = {
       question_type: 'programming', question_data: cod.question_data, question_editor_type: 1,
       multilanguage: [cod.language], inputformat: cod.inputformat, outputformat: cod.outputformat,
+      // constraints: cod.constraints || '',
       enablecustominput: true, line_token_evaluation: false,
-      codeconstraints: null, timelimit: null, memorylimit: null, codesize: null,
+      codeconstraints: cod.constraints || '', timelimit: null, memorylimit: null, codesize: null,
       setLimit: false, enable_api: false, outputLimit: null,
       subject_id: vals.subject_id || '',
       blooms_taxonomy: null, course_outcome: null, program_outcome: null, hint: [],
