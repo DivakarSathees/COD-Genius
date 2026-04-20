@@ -381,7 +381,13 @@
 
 /* TC divider overrides — no growing line between label and actions */
 .divider-label-tc::after { display: none; }
-.divider-label-tc .btn-run-all { margin-left: auto; }
+.tc-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.tc-regen-group { display: flex; align-items: center; gap: 6px; }
+.tc-count-input { width: 62px; height: 30px; font-size: 12px; padding: 0 8px; text-align: center; }
+.btn-regen-tc { display: inline-flex; align-items: center; gap: 5px; padding: 0 12px; height: 30px; font-size: 12px; font-weight: 600; border-radius: 6px; border: none; background: rgba(168,85,247,.18); color: #c084fc; cursor: pointer; transition: background .15s; white-space: nowrap; }
+.btn-regen-tc:hover:not(:disabled) { background: rgba(168,85,247,.32); }
+.btn-regen-tc:disabled { opacity: .5; cursor: not-allowed; }
+.btn-regen-tc .dot-spinner { border-top-color: #c084fc; width: 11px; height: 11px; }
 
 /* === Quill === */
 .quill-field {

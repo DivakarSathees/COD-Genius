@@ -179,6 +179,8 @@ export class CodGeneratorComponent implements OnInit {
       outputerror: '',
       runcode: false,
       runningAll: false,
+      tcRegenerating: false,
+      tcCount: 15,
       upload: false,
       batchStatus: null,
       editorOptions: { theme: 'vs-dark', language: langMap[langKey] || 'java' },
@@ -341,6 +343,63 @@ export class CodGeneratorComponent implements OnInit {
         cod.solutionError = 'Error generating solution. Please try again.';
         cod.solutionGenerating = false;
         this.toastr.error(err.error?.error || 'Failed to generate solution.', 'Error');
+      }
+    });
+  }
+
+  regenerateTestcases(cod: any) {
+    if (!cod.solution) {
+      this.toastr.warning('Generate a solution first before regenerating test cases.', 'No Solution'); return;
+    }
+    const count = cod.tcCount || 15;
+    cod.tcRegenerating = true;
+    const { provider, model } = this.promptForm.getRawValue();
+    this.codService.regenerateTestcases({
+      question_data: cod.question_data,
+      solution_data: cod.solution,
+      language: cod.language,
+      count,
+      provider,
+      model,
+    }).subscribe({
+      next: (res: any) => {
+        const data = res.response;
+        const validation = res.validation;
+        const sampleInputs = new Set((data.samples || []).map((s: any) => s.input?.trim()));
+
+        const allTc: any[] = (data.testcases || []).map((s: any, j: number) => {
+          const valResult = validation?.results?.[j];
+          return {
+            input: s.input,
+            output: valResult?.passed ? (valResult.actual_output ?? s.output) : s.output,
+            difficulty: s.difficulty,
+            score: s.score,
+            error: valResult && !valResult.passed
+              ? `Validation mismatch — Expected: "${s.output}" | Got: "${valResult.actual_output}"`
+              : '',
+            running: false,
+            hasRun: !!valResult,
+            isSelected: sampleInputs.has(s.input?.trim()),
+            execTimeMs: valResult?.execTimeMs || 0,
+            memBytes: valResult?.memBytes ? String(valResult.memBytes) : '',
+          };
+        });
+
+        cod.samples = allTc;
+        cod.validation = validation || null;
+        this.redistributeScores(cod);
+        cod.tcRegenerating = false;
+
+        const passed = validation?.passed_count ?? 0;
+        const total = validation?.total ?? allTc.length;
+        this.toastr.success(
+          `${allTc.length} test case(s) regenerated · ${passed}/${total} validated · ${sampleInputs.size} sample I/O selected.`,
+          'Done'
+        );
+      },
+      error: (err: any) => {
+        this.toastr.error(err.error?.error || 'Failed to regenerate test cases.', 'Error');
+        cod.tcRegenerating = false;
       }
     });
   }

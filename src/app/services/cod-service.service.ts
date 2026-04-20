@@ -44,6 +44,10 @@ export class CodServiceService {
     return this.http.post(`${this.apiUrl}/generate-solution`, { ...cod, autoValidate });
   }
 
+  regenerateTestcases(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/regenerate-testcases`, data);
+  }
+
   runCode(code: any): Observable<any> {
     if (code.language === 'Python') return this.http.post(`${this.apiUrl}/run-python`, code);
     if (code.language === 'C#' || code.language === 'csharp') return this.http.post(`${this.apiUrl}/run-csharp`, code);

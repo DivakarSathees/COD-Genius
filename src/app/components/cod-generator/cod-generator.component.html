@@ -367,10 +367,20 @@
                 <span class="val-pass-count">✓ {{ cod.validation.passed_count }}/{{ cod.validation.total }}</span>
                 <span *ngIf="cod.validation.failed_count > 0" class="val-fail-count">&nbsp;· {{ cod.validation.failed_count }} failed</span>
               </span>
-              <button class="btn-run-all" [disabled]="cod.runningAll || cod.samples.length === 0" (click)="runAllSamples(cod)">
-                <span *ngIf="!cod.runningAll">▶▶ Run All</span>
-                <span *ngIf="cod.runningAll" class="loading-text"><span class="dot-spinner"></span> Running…</span>
-              </button>
+              <div class="tc-actions">
+                <div class="tc-regen-group">
+                  <input type="number" class="field-input tc-count-input" [(ngModel)]="cod.tcCount"
+                    min="1" max="50" placeholder="Count" title="Number of test cases to generate" />
+                  <button class="btn-regen-tc" [disabled]="cod.tcRegenerating || cod.runningAll" (click)="regenerateTestcases(cod)">
+                    <span *ngIf="!cod.tcRegenerating">↺ Regenerate TCs</span>
+                    <span *ngIf="cod.tcRegenerating" class="loading-text"><span class="dot-spinner"></span> Generating…</span>
+                  </button>
+                </div>
+                <button class="btn-run-all" [disabled]="cod.runningAll || cod.samples.length === 0" (click)="runAllSamples(cod)">
+                  <span *ngIf="!cod.runningAll">▶▶ Run All</span>
+                  <span *ngIf="cod.runningAll" class="loading-text"><span class="dot-spinner"></span> Running…</span>
+                </button>
+              </div>
             </div>
 
             <div *ngFor="let s of cod.samples; let j = index; trackBy: trackBySample"
