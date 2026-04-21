@@ -326,6 +326,7 @@ export class CodGeneratorComponent implements OnInit {
 
   generateFromPrompt() {
     if (this.loading) return;
+    this.guidelinesEditorOpen = !this.guidelinesEditorOpen
     const { token, searchText, prompt } = this.promptForm.value;
     if (!prompt?.trim()) {
       this.toastr.warning('Prompt is required before generating problems.', 'Validation Failed'); return;
