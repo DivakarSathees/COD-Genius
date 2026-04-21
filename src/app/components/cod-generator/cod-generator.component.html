@@ -38,8 +38,62 @@
           No sessions yet.<br>Create one to get started.
         </div>
       </div>
+      <!-- Token Usage button -->
+      <div class="sidebar-usage-btn-wrap">
+        <button class="sidebar-usage-btn" (click)="tokenModalOpen = true; loadTokenUsage()">
+          <span class="usage-btn-icon">📊</span>
+          <span class="usage-btn-label">Token Usage</span>
+          <span *ngIf="totalTokensUsed > 0" class="usage-btn-badge">{{ totalTokensUsed | number }}</span>
+        </button>
+      </div>
     </div>
   </aside>
+
+  <!-- ─── Token Usage Modal ─── -->
+  <div *ngIf="tokenModalOpen" class="token-modal-backdrop" (click)="tokenModalOpen = false">
+    <div class="token-modal" (click)="$event.stopPropagation()">
+      <div class="token-modal-header">
+        <span class="token-modal-title">📊 Token Usage — Overall</span>
+        <span *ngIf="totalTokensUsed > 0" class="token-modal-total">{{ totalTokensUsed | number }} total tokens used</span>
+        <button class="token-modal-close" (click)="tokenModalOpen = false">✕</button>
+      </div>
+      <div class="token-modal-body">
+        <div *ngIf="tokenUsageLoading" class="token-loading">Loading…</div>
+        <div *ngIf="!tokenUsageLoading && tokenUsageRows.length === 0" class="token-empty">No usage recorded yet.</div>
+        <table *ngIf="!tokenUsageLoading && tokenUsageRows.length > 0" class="token-table">
+          <thead>
+            <tr>
+              <th>Provider</th>
+              <th>Model</th>
+              <th>Calls</th>
+              <th>Prompt Tokens</th>
+              <th>Completion Tokens</th>
+              <th>Total Tokens</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of tokenUsageRows">
+              <td><span class="provider-badge prov-{{row.provider}}">{{ row.provider }}</span></td>
+              <td class="model-cell">{{ row.model }}</td>
+              <td class="num-cell">{{ row.calls }}</td>
+              <td class="num-cell">{{ row.promptTokens | number }}</td>
+              <td class="num-cell">{{ row.completionTokens | number }}</td>
+              <td class="num-cell total-cell">{{ row.totalTokens | number }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="token-total-row">
+              <td colspan="2" class="total-label">Total</td>
+              <td class="num-cell">{{ totalCalls }}</td>
+              <td class="num-cell">{{ totalPromptTokens | number }}</td>
+              <td class="num-cell">{{ totalCompletionTokens | number }}</td>
+              <td class="num-cell total-cell">{{ totalTokensUsed | number }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══ MAIN CONTENT ═══ -->
   <main class="main-content">

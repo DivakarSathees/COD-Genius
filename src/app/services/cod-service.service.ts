@@ -56,6 +56,10 @@ export class CodServiceService {
     return this.http.get(`${this.apiUrl}/guidelines`);
   }
 
+  getTokenUsage(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/token-usage`);
+  }
+
   runCode(code: any): Observable<any> {
     if (code.language === 'Python') return this.http.post(`${this.apiUrl}/run-python`, code);
     if (code.language === 'C#' || code.language === 'csharp') return this.http.post(`${this.apiUrl}/run-csharp`, code);

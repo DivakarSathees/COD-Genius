@@ -40,6 +40,22 @@ export class CodGeneratorComponent implements OnInit {
   guidelinesEditorOpen = false;
   guidelinesLoading = false;
 
+  tokenUsage: Record<string, { provider: string; model: string; promptTokens: number; completionTokens: number; totalTokens: number; calls: number }> = {};
+  tokenModalOpen = false;
+  tokenUsageLoading = false;
+
+  get totalTokensUsed(): number {
+    return Object.values(this.tokenUsage).reduce((s, v) => s + v.totalTokens, 0);
+  }
+
+  get tokenUsageRows() {
+    return Object.values(this.tokenUsage).sort((a, b) => b.totalTokens - a.totalTokens);
+  }
+
+  get totalPromptTokens(): number { return Object.values(this.tokenUsage).reduce((s, v) => s + v.promptTokens, 0); }
+  get totalCompletionTokens(): number { return Object.values(this.tokenUsage).reduce((s, v) => s + v.completionTokens, 0); }
+  get totalCalls(): number { return Object.values(this.tokenUsage).reduce((s, v) => s + v.calls, 0); }
+
   availableModels: { groq: any[]; azure: any[] } = { groq: [], azure: [] };
   providerModels: any[] = [];
 
@@ -79,6 +95,7 @@ export class CodGeneratorComponent implements OnInit {
   ngOnInit(): void {
     this.getAllSessions();
     this.loadModels();
+    this.loadTokenUsage();
     this.promptForm.get('provider')!.valueChanges.subscribe(p => {
       this.providerModels = this.availableModels[p as 'groq' | 'azure'] || [];
       this.promptForm.patchValue({ model: this.providerModels[0]?.id || '' });
@@ -96,6 +113,27 @@ export class CodGeneratorComponent implements OnInit {
     });
   }
 
+  loadTokenUsage() {
+    this.tokenUsageLoading = true;
+    this.codService.getTokenUsage().subscribe({
+      next: (res: any) => {
+        (res.usage || []).forEach((doc: any) => {
+          const key = `${doc.provider}/${doc.model}`;
+          this.tokenUsage[key] = {
+            provider:         doc.provider,
+            model:            doc.model,
+            promptTokens:     doc.prompt_tokens     || 0,
+            completionTokens: doc.completion_tokens || 0,
+            totalTokens:      doc.total_tokens      || 0,
+            calls:            doc.calls             || 0,
+          };
+        });
+        this.tokenUsageLoading = false;
+      },
+      error: () => { this.tokenUsageLoading = false; }
+    });
+  }
+
   toggleGuidelines() {
     this.useGuidelines = !this.useGuidelines;
     if (this.useGuidelines && !this.guidelinesText) {
@@ -105,6 +143,32 @@ export class CodGeneratorComponent implements OnInit {
         error: () => { this.guidelinesLoading = false; this.toastr.error('Failed to load guidelines.', 'Error'); }
       });
     }
+  }
+
+  accumulateUsage(usage: any) {
+    if (!usage?.model) return;
+    const key = `${usage.provider}/${usage.model}`;
+    const existing = this.tokenUsage[key];
+    if (existing) {
+      existing.promptTokens     += usage.prompt_tokens     || 0;
+      existing.completionTokens += usage.completion_tokens || 0;
+      existing.totalTokens      += usage.total_tokens      || 0;
+      existing.calls++;
+    } else {
+      this.tokenUsage[key] = {
+        provider:         usage.provider,
+        model:            usage.model,
+        promptTokens:     usage.prompt_tokens     || 0,
+        completionTokens: usage.completion_tokens || 0,
+        totalTokens:      usage.total_tokens      || 0,
+        calls: 1,
+      };
+    }
+  }
+
+  accumulateUsageLog(usageLog: any[]) {
+    if (!Array.isArray(usageLog)) return;
+    usageLog.forEach(u => this.accumulateUsage(u));
   }
 
   get activeGuidelinesContent(): string | null {
@@ -280,6 +344,7 @@ export class CodGeneratorComponent implements OnInit {
         sessionStorage.setItem('codSessionId', res.response.sessionId);
         this.getAllSessions();
         this.cods = (res.response.result || []).map((cod: any) => this.makeCod(cod));
+        this.accumulateUsage(res.usage);
         this.toastr.success(`${this.cods.length} problem(s) generated successfully.`, 'Done');
         this.loading = false;
       },
@@ -317,6 +382,7 @@ export class CodGeneratorComponent implements OnInit {
         this.getAllSessions();
         const validCount = (res.results || []).filter((r: any) => r.status === 'valid').length;
         const total = (res.results || []).length;
+        this.accumulateUsageLog(res.usageLog);
         this.toastr.success(`${total} problem(s) generated · ${validCount}/${total} validated.`, 'Batch Complete');
         this.cods = (res.results || []).map((item: any) => {
           const cod = this.makeCod(item.problem);
@@ -361,6 +427,7 @@ export class CodGeneratorComponent implements OnInit {
         cod.solutionGenerated = true;
         cod.solutionVisible = true;
         cod.solutionGenerating = false;
+        this.accumulateUsage(res.usage);
       },
       error: (err: any) => {
         cod.solutionError = 'Error generating solution. Please try again.';
@@ -414,6 +481,7 @@ export class CodGeneratorComponent implements OnInit {
         cod.validation = validation || null;
         this.redistributeScores(cod);
         cod.tcRegenerating = false;
+        this.accumulateUsage(res.usage);
 
         const passed = validation?.passed_count ?? 0;
         const total = validation?.total ?? allTc.length;
@@ -517,6 +585,7 @@ export class CodGeneratorComponent implements OnInit {
         cod.language = updated.language ?? cod.language;
         cod.refinePrompt = '';
         cod.refining = false;
+        this.accumulateUsage(res.usage);
         this.toastr.success('Question updated successfully.', 'Refined');
       },
       error: (err: any) => {
