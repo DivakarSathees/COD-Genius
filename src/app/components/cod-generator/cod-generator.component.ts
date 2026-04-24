@@ -40,21 +40,35 @@ export class CodGeneratorComponent implements OnInit {
   guidelinesEditorOpen = false;
   guidelinesLoading = false;
 
-  tokenUsage: Record<string, { provider: string; model: string; promptTokens: number; completionTokens: number; totalTokens: number; calls: number }> = {};
+  tokenUsage: Record<string, { date: string; provider: string; model: string; promptTokens: number; completionTokens: number; totalTokens: number; calls: number }> = {};
   tokenModalOpen = false;
   tokenUsageLoading = false;
 
-  get totalTokensUsed(): number {
-    return Object.values(this.tokenUsage).reduce((s, v) => s + v.totalTokens, 0);
-  }
+  private get _allRows() { return Object.values(this.tokenUsage); }
 
-  get tokenUsageRows() {
-    return Object.values(this.tokenUsage).sort((a, b) => b.totalTokens - a.totalTokens);
-  }
+  get totalTokensUsed(): number { return this._allRows.reduce((s, v) => s + v.totalTokens, 0); }
+  get totalPromptTokens(): number { return this._allRows.reduce((s, v) => s + v.promptTokens, 0); }
+  get totalCompletionTokens(): number { return this._allRows.reduce((s, v) => s + v.completionTokens, 0); }
+  get totalCalls(): number { return this._allRows.reduce((s, v) => s + v.calls, 0); }
 
-  get totalPromptTokens(): number { return Object.values(this.tokenUsage).reduce((s, v) => s + v.promptTokens, 0); }
-  get totalCompletionTokens(): number { return Object.values(this.tokenUsage).reduce((s, v) => s + v.completionTokens, 0); }
-  get totalCalls(): number { return Object.values(this.tokenUsage).reduce((s, v) => s + v.calls, 0); }
+  get tokenUsageByDate(): { date: string; rows: any[]; calls: number; promptTokens: number; completionTokens: number; totalTokens: number }[] {
+    const byDate: Record<string, any[]> = {};
+    for (const row of this._allRows) {
+      const d = row.date || 'Unknown';
+      if (!byDate[d]) byDate[d] = [];
+      byDate[d].push(row);
+    }
+    return Object.entries(byDate)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([date, rows]) => ({
+        date,
+        rows: rows.sort((a: any, b: any) => b.totalTokens - a.totalTokens),
+        calls:            rows.reduce((s: number, r: any) => s + r.calls, 0),
+        promptTokens:     rows.reduce((s: number, r: any) => s + r.promptTokens, 0),
+        completionTokens: rows.reduce((s: number, r: any) => s + r.completionTokens, 0),
+        totalTokens:      rows.reduce((s: number, r: any) => s + r.totalTokens, 0),
+      }));
+  }
 
   availableModels: { groq: any[]; azure: any[] } = { groq: [], azure: [] };
   providerModels: any[] = [];
@@ -118,8 +132,9 @@ export class CodGeneratorComponent implements OnInit {
     this.codService.getTokenUsage().subscribe({
       next: (res: any) => {
         (res.usage || []).forEach((doc: any) => {
-          const key = `${doc.provider}/${doc.model}`;
+          const key = `${doc.date}/${doc.provider}/${doc.model}`;
           this.tokenUsage[key] = {
+            date:             doc.date             || 'Unknown',
             provider:         doc.provider,
             model:            doc.model,
             promptTokens:     doc.prompt_tokens     || 0,
@@ -147,7 +162,8 @@ export class CodGeneratorComponent implements OnInit {
 
   accumulateUsage(usage: any) {
     if (!usage?.model) return;
-    const key = `${usage.provider}/${usage.model}`;
+    const date = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const key = `${date}/${usage.provider}/${usage.model}`;
     const existing = this.tokenUsage[key];
     if (existing) {
       existing.promptTokens     += usage.prompt_tokens     || 0;
@@ -156,6 +172,7 @@ export class CodGeneratorComponent implements OnInit {
       existing.calls++;
     } else {
       this.tokenUsage[key] = {
+        date,
         provider:         usage.provider,
         model:            usage.model,
         promptTokens:     usage.prompt_tokens     || 0,

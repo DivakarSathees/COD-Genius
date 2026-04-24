@@ -59,38 +59,45 @@
       </div>
       <div class="token-modal-body">
         <div *ngIf="tokenUsageLoading" class="token-loading">Loading…</div>
-        <div *ngIf="!tokenUsageLoading && tokenUsageRows.length === 0" class="token-empty">No usage recorded yet.</div>
-        <table *ngIf="!tokenUsageLoading && tokenUsageRows.length > 0" class="token-table">
-          <thead>
-            <tr>
-              <th>Provider</th>
-              <th>Model</th>
-              <th>Calls</th>
-              <th>Prompt Tokens</th>
-              <th>Completion Tokens</th>
-              <th>Total Tokens</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let row of tokenUsageRows">
-              <td><span class="provider-badge prov-{{row.provider}}">{{ row.provider }}</span></td>
-              <td class="model-cell">{{ row.model }}</td>
-              <td class="num-cell">{{ row.calls }}</td>
-              <td class="num-cell">{{ row.promptTokens | number }}</td>
-              <td class="num-cell">{{ row.completionTokens | number }}</td>
-              <td class="num-cell total-cell">{{ row.totalTokens | number }}</td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr class="token-total-row">
-              <td colspan="2" class="total-label">Total</td>
-              <td class="num-cell">{{ totalCalls }}</td>
-              <td class="num-cell">{{ totalPromptTokens | number }}</td>
-              <td class="num-cell">{{ totalCompletionTokens | number }}</td>
-              <td class="num-cell total-cell">{{ totalTokensUsed | number }}</td>
-            </tr>
-          </tfoot>
-        </table>
+        <div *ngIf="!tokenUsageLoading && tokenUsageByDate.length === 0" class="token-empty">No usage recorded yet.</div>
+
+        <ng-container *ngFor="let group of tokenUsageByDate">
+          <div class="token-date-header">
+            <span class="token-date-label">{{ group.date }}</span>
+            <span class="token-date-subtotal">{{ group.totalTokens | number }} tokens · {{ group.calls }} call{{ group.calls !== 1 ? 's' : '' }}</span>
+          </div>
+          <table class="token-table">
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Model</th>
+                <th>Calls</th>
+                <th>Prompt</th>
+                <th>Completion</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of group.rows">
+                <td><span class="provider-badge prov-{{row.provider}}">{{ row.provider }}</span></td>
+                <td class="model-cell">{{ row.model }}</td>
+                <td class="num-cell">{{ row.calls }}</td>
+                <td class="num-cell">{{ row.promptTokens | number }}</td>
+                <td class="num-cell">{{ row.completionTokens | number }}</td>
+                <td class="num-cell total-cell">{{ row.totalTokens | number }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </ng-container>
+
+        <!-- Overall total -->
+        <div *ngIf="!tokenUsageLoading && tokenUsageByDate.length > 0" class="token-overall-total">
+          <span class="total-label-overall">Overall Total</span>
+          <span class="num-cell">{{ totalCalls }} calls</span>
+          <span class="num-cell">{{ totalPromptTokens | number }} prompt</span>
+          <span class="num-cell">{{ totalCompletionTokens | number }} completion</span>
+          <span class="total-cell-overall">{{ totalTokensUsed | number }} tokens</span>
+        </div>
       </div>
     </div>
   </div>

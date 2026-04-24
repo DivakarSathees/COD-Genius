@@ -428,6 +428,14 @@
 .total-cell { font-weight: 700; color: #4f46e5; }
 .token-total-row td { background: rgba(79,70,229,.06); font-weight: 700; border-top: 2px solid rgba(79,70,229,.2); }
 .total-label { color: var(--c-text); }
+.token-date-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 4px 4px; margin-top: 12px; border-bottom: 2px solid rgba(99,102,241,.2); }
+.token-date-header:first-of-type { margin-top: 0; }
+.token-date-label { font-size: 13px; font-weight: 700; color: #818cf8; letter-spacing: .02em; }
+.token-date-subtotal { font-size: 11px; color: var(--c-text-muted); font-weight: 500; }
+.token-table + .token-date-header { margin-top: 18px; }
+.token-overall-total { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-top: 14px; padding: 10px 12px; background: rgba(79,70,229,.07); border-radius: 8px; border: 1px solid rgba(79,70,229,.18); }
+.total-label-overall { font-size: 12px; font-weight: 700; color: var(--c-text); flex: 1; }
+.total-cell-overall { font-size: 14px; font-weight: 800; color: #4f46e5; }
 .model-cell { font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 11px; color: var(--c-text-muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .provider-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: capitalize; }
 .prov-gemini  { background: rgba(16,185,129,.12); color: #059669; }
