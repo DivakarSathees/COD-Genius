@@ -466,6 +466,27 @@
             </div>
           </div>
 
+          <!-- ── Debugging Mode ── -->
+          <div *ngIf="cod.solutionGenerated" class="debug-section">
+            <div class="debug-toggle-row">
+              <label class="debug-toggle-label">
+                <input type="checkbox" [checked]="cod.debuggingMode" (change)="toggleDebugging(cod)" />
+                <span class="debug-toggle-text">Debugging Mode</span>
+                <span *ngIf="cod.debuggingMode" class="toggle-badge debug-badge">Active</span>
+              </label>
+              <span class="debug-hint">Upload a buggy version alongside the solution — students fix the errors</span>
+            </div>
+            <div *ngIf="cod.debuggingMode" class="debug-editor-panel">
+              <div class="sub-label debug-editor-label">
+                Debug Code
+                <span class="debug-hint">Edit below to introduce intentional bugs</span>
+              </div>
+              <div class="editor-wrap">
+                <ngx-monaco-editor [options]="cod.editorOptions" [(ngModel)]="cod.debugSolution"></ngx-monaco-editor>
+              </div>
+            </div>
+          </div>
+
           <!-- ── Test Cases ── -->
           <div *ngIf="cod.solutionGenerated && cod.samples.length > 0">
             <div class="divider-label divider-label-tc">

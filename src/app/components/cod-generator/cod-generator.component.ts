@@ -285,6 +285,8 @@ export class CodGeneratorComponent implements OnInit {
       refining: false,
       upload: false,
       batchStatus: null,
+      debuggingMode: false,
+      debugSolution: '',
       editorOptions: { theme: 'vs-dark', language: langMap[langKey] || 'java' },
     };
   }
@@ -614,6 +616,13 @@ export class CodGeneratorComponent implements OnInit {
     });
   }
 
+  toggleDebugging(cod: any) {
+    cod.debuggingMode = !cod.debuggingMode;
+    if (cod.debuggingMode && !cod.debugSolution) {
+      cod.debugSolution = cod.solution;
+    }
+  }
+
   toggleSampleSelection(cod: any, sample: any) {
     sample.isSelected = !sample.isSelected;
     this.redistributeScores(cod);
@@ -675,14 +684,17 @@ export class CodGeneratorComponent implements OnInit {
       blooms_taxonomy: null, course_outcome: null, program_outcome: null, hint: [],
       manual_difficulty: cod.manual_difficulty || 'Medium',
       solution: [{ language: cod.language, whitelist: [{ list: [] }], hasSnippet: false,
-        solutiondata: [{ solution: cod.solution || '', solutionExp: null, solutionbest: true, isSolutionExp: false, solutionDebug: null }],
+        // codeStub - code inside the debug editor needs to be passed here only if the debug check box is enabled and if the checkbox is disabled then codeStub should not be passed in the payload itself because in that case we will not show the debug editor in the frontend and we should not pass any codeStub to the backend as well
+        codeStub: (cod.debuggingMode && cod.debugSolution) ? cod.debugSolution : '',
+        solutiondata: [{ solution: cod.solution || '', solutionExp: null, solutionbest: true, isSolutionExp: false, solutionDebug: cod.solution || '' }],
         hideHeader: false, hideFooter: false }],
       testcases,
       topic_id: vals.topic_id || '', sub_topic_id: vals.sub_topic_id || '',
-      linked_concepts: '', tags: [''], sample_io: JSON.stringify(sampleIo),
+      linked_concepts: '', sample_io: JSON.stringify(sampleIo),
       question_media: [], pcm_combination_ids: [''],
       qb_id: this.selectedQbId || vals.qb_id || '',
-      createdBy: '', imported: 'is_imported_question'
+      createdBy: '', imported: 'is_imported_question',
+      tags: ["cod-genius"]
     };
     this.codService.uploadCods(payload, this.promptForm.value.token).subscribe({
       next: (res: any) => {

@@ -454,6 +454,25 @@
 .btn-refine:disabled { opacity: .5; cursor: not-allowed; }
 .btn-refine .dot-spinner { border-top-color: #d97706; width: 11px; height: 11px; }
 
+/* === Debugging Mode === */
+.debug-section { margin: 20px 0; }
+.debug-toggle-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 14px; border-radius: 8px;
+  background: rgba(239,68,68,.05); border: 1px solid rgba(239,68,68,.2);
+}
+.debug-toggle-label {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  color: var(--c-text); user-select: none;
+}
+.debug-toggle-label input[type="checkbox"] { width: 16px; height: 16px; accent-color: #ef4444; cursor: pointer; }
+.debug-toggle-text { }
+.debug-badge { background: #ef4444 !important; }
+.debug-hint { font-size: 11px; color: var(--c-text-muted); }
+.debug-editor-panel { margin-top: 12px; }
+.debug-editor-label { color: #ef4444 !important; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+
 /* === Quill === */
 .quill-field {
   border: 1px solid var(--c-border);
