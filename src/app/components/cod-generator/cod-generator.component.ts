@@ -287,6 +287,7 @@ export class CodGeneratorComponent implements OnInit {
       batchStatus: null,
       debuggingMode: false,
       debugSolution: '',
+      debugGenerating: false,
       editorOptions: { theme: 'vs-dark', language: langMap[langKey] || 'java' },
     };
   }
@@ -442,9 +443,28 @@ export class CodGeneratorComponent implements OnInit {
     const { provider, model } = this.promptForm.getRawValue();
     this.codService.generateSolution({ ...cod, provider, model, useGuidelines: this.useGuidelines, guidelinesContent: this.activeGuidelinesContent }, true).subscribe({
       next: (res: any) => {
-        cod.solution = res.response[0].solution_data;
-        cod.samples = (res.response[0].samples || []).map((s: any) => ({ ...s, error: '', running: false, isSelected: this.useGuidelines ? (s.isSampleIO === true) : false, hasRun: false }));
-        cod.validation = res.validation || null;
+        const solution = res.response[0];
+        const validation = res.validation || null;
+        cod.solution = solution.solution_data;
+        cod.samples = (solution.samples || []).map((s: any, j: number) => {
+          const valResult = validation?.results?.[j];
+          return {
+            input: s.input,
+            output: valResult?.passed ? (valResult.actual_output ?? s.output) : s.output,
+            difficulty: s.difficulty,
+            score: s.score,
+            isSampleIO: s.isSampleIO,
+            error: valResult && !valResult.passed
+              ? `Validation mismatch — Expected: "${s.output}" | Got: "${valResult.actual_output}"`
+              : '',
+            running: false,
+            isSelected: this.useGuidelines ? (s.isSampleIO === true) : false,
+            hasRun: !!valResult,
+            execTimeMs: valResult?.execTimeMs || 0,
+            memBytes: valResult?.memBytes ? String(valResult.memBytes) : '',
+          };
+        });
+        cod.validation = validation;
         cod.solutionGenerated = true;
         cod.solutionVisible = true;
         cod.solutionGenerating = false;
@@ -621,6 +641,32 @@ export class CodGeneratorComponent implements OnInit {
     if (cod.debuggingMode && !cod.debugSolution) {
       cod.debugSolution = cod.solution;
     }
+  }
+
+  generateDebugCode(cod: any) {
+    if (!cod.solution) {
+      this.toastr.warning('Generate a solution first before creating debug code.', 'No Solution'); return;
+    }
+    cod.debugGenerating = true;
+    const { provider, model } = this.promptForm.getRawValue();
+    this.codService.generateDebugCode({
+      solution_data: cod.solution,
+      question_data: cod.question_data,
+      language: cod.language,
+      provider,
+      model,
+    }).subscribe({
+      next: (res: any) => {
+        cod.debugSolution = res.debugCode || '';
+        cod.debugGenerating = false;
+        this.accumulateUsage(res.usage);
+        this.toastr.success('Debug code generated.', 'Done');
+      },
+      error: (err: any) => {
+        this.toastr.error(err.error?.error || 'Failed to generate debug code.', 'Error');
+        cod.debugGenerating = false;
+      }
+    });
   }
 
   toggleSampleSelection(cod: any, sample: any) {

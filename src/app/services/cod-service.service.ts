@@ -52,6 +52,10 @@ export class CodServiceService {
     return this.http.post(`${this.apiUrl}/refine-cod`, data);
   }
 
+  generateDebugCode(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/generate-debug-code`, data);
+  }
+
   getGuidelines(): Observable<any> {
     return this.http.get(`${this.apiUrl}/guidelines`);
   }

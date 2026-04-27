@@ -252,13 +252,30 @@
             <span *ngIf="!loading">Generate Problems</span>
             <span *ngIf="loading" class="loading-text"><span class="dot-spinner"></span> Generating…</span>
           </button>
+<!-- make this below button temporaryly disable with tooltip -->
 
-          <button type="button" class="btn btn-batch"
+          <!-- <button type="button" class="btn btn-batch"
             [disabled]="loading || batchLoading"
             (click)="generateBatch()">
             <span *ngIf="!batchLoading">⚡ Generate &amp; Validate</span>
             <span *ngIf="batchLoading" class="loading-text"><span class="dot-spinner"></span> Processing all…</span>
-          </button>
+          </button> -->
+          <span
+            class="tooltip-wrapper"
+            [attr.title]="(loading || batchLoading) ? 'Batch generation is currently in progress' : null"
+          >
+            <button
+              type="button"
+              class="btn btn-batch"
+              [disabled]="true"
+              (click)="generateBatch()"
+            >
+              <span *ngIf="!batchLoading">⚡ Generate & Validate</span>
+              <span *ngIf="batchLoading" class="loading-text">
+                <span class="dot-spinner"></span> Processing all…
+              </span>
+            </button>
+          </span>
 
           <span class="action-hint">
             <strong>Generate Problems</strong> — descriptions only &nbsp;·&nbsp;
@@ -477,9 +494,15 @@
               <span class="debug-hint">Upload a buggy version alongside the solution — students fix the errors</span>
             </div>
             <div *ngIf="cod.debuggingMode" class="debug-editor-panel">
-              <div class="sub-label debug-editor-label">
-                Debug Code
-                <span class="debug-hint">Edit below to introduce intentional bugs</span>
+              <div class="debug-editor-toolbar">
+                <div class="sub-label debug-editor-label">
+                  Debug Code
+                  <span class="debug-hint">Buggy version — students identify and fix the errors</span>
+                </div>
+                <button class="btn-gen-debug" [disabled]="cod.debugGenerating" (click)="generateDebugCode(cod)">
+                  <span *ngIf="!cod.debugGenerating">🤖 AI Generate Bugs</span>
+                  <span *ngIf="cod.debugGenerating" class="loading-text"><span class="dot-spinner debug-dot-spinner"></span> Generating…</span>
+                </button>
               </div>
               <div class="editor-wrap">
                 <ngx-monaco-editor [options]="cod.editorOptions" [(ngModel)]="cod.debugSolution"></ngx-monaco-editor>
