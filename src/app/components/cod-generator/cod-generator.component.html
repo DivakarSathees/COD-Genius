@@ -521,7 +521,7 @@
               <div class="tc-actions">
                 <div class="tc-regen-group">
                   <input type="number" class="field-input tc-count-input"
-                    [value]="useGuidelines ? 6 : cod.tcCount"
+                    [value]="useGuidelines ? 9 : cod.tcCount"
                     (change)="useGuidelines ? null : (cod.tcCount = +$any($event.target).value)"
                     [disabled]="useGuidelines"
                     min="1" max="50" placeholder="Count" title="Number of test cases to generate" />
