@@ -442,6 +442,7 @@
 .prov-azure   { background: rgba(0,120,212,.12);  color: #0078d4; }
 .prov-github  { background: rgba(36,41,47,.1);    color: #24292f; }
 .prov-groq    { background: rgba(245,158,11,.12); color: #d97706; }
+.prov-puter   { background: rgba(168,85,247,.12); color: #9333ea; }
 
 /* === Refine Question === */
 .refine-section { background: rgba(245,158,11,.05); border: 1px solid rgba(245,158,11,.2); border-radius: 8px; padding: 12px 14px; }
@@ -687,3 +688,80 @@
 .tooltip-wrapper button:disabled {
   pointer-events: none; /* ensures wrapper gets the hover */
 }
+
+/* === Debug Run Section === */
+.debug-run-section {
+  margin-top: 14px;
+  border-top: 1px solid rgba(239,68,68,.15);
+  padding-top: 12px;
+}
+.debug-run-toolbar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.btn-run-debug-all {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 16px; background: rgba(239,68,68,.15); color: #ef4444;
+  border: 1px solid rgba(239,68,68,.35); border-radius: 7px;
+  font-size: 12px; font-weight: 600; cursor: pointer; transition: background .15s; white-space: nowrap;
+}
+.btn-run-debug-all:hover:not(:disabled) { background: rgba(239,68,68,.28); }
+.btn-run-debug-all:disabled { opacity: .5; cursor: not-allowed; }
+.debug-run-hint { font-size: 11px; color: var(--c-text-muted); }
+
+.debug-status-badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.debug-effective   { background: rgba(16,185,129,.15); color: #059669; }
+.debug-ineffective { background: rgba(245,158,11,.15); color: #d97706; }
+.debug-error-badge { background: rgba(239,68,68,.15); color: #dc2626; }
+.debug-pending     { background: rgba(100,116,139,.1); color: var(--c-text-muted); }
+.tc-debug-badge    { margin-left: 2px; }
+
+/* Debug output row inside TC card */
+.tc-debug-row {
+  margin: 6px 0 4px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border-left: 3px solid var(--c-border);
+  background: rgba(0,0,0,.02);
+}
+.tc-debug-row-effective  { border-left-color: #10b981; background: rgba(16,185,129,.04); }
+.tc-debug-row-ineffective { border-left-color: #f59e0b; background: rgba(245,158,11,.04); }
+.tc-debug-row-error      { border-left-color: #ef4444; background: rgba(239,68,68,.04); }
+
+.tc-debug-row-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .4px; color: var(--c-text-muted); display: block; margin-bottom: 4px;
+}
+.tc-debug-output-box {
+  min-height: 30px !important;
+}
+
+/* === Puter banner === */
+.puter-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 8px;
+  background: rgba(168,85,247,.07);
+  border: 1px solid rgba(168,85,247,.22);
+  margin-bottom: 4px;
+}
+.puter-banner-icon { font-size: 18px; flex-shrink: 0; }
+.puter-banner-content { flex: 1; }
+.puter-banner-title { font-size: 12px; font-weight: 600; color: #9333ea; }
+.puter-status { font-size: 11px; margin-top: 2px; color: var(--c-text-muted); }
+.puter-signed-in  { color: #10b981; }
+.puter-signed-out { color: #f59e0b; }
+.btn-puter-login {
+  padding: 5px 14px; background: #9333ea; color: #fff;
+  border: none; border-radius: 6px; cursor: pointer;
+  font-size: 12px; font-weight: 600; white-space: nowrap; flex-shrink: 0;
+  transition: opacity .15s;
+}
+.btn-puter-login:hover { opacity: .88; }
+.btn-puter-refresh {
+  padding: 5px 10px; background: transparent; color: #9333ea;
+  border: 1px solid rgba(168,85,247,.4); border-radius: 6px; cursor: pointer;
+  font-size: 12px; flex-shrink: 0; transition: background .15s;
+}
+.btn-puter-refresh:hover { background: rgba(168,85,247,.1); }

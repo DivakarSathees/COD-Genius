@@ -70,8 +70,15 @@ export class CodGeneratorComponent implements OnInit {
       }));
   }
 
-  availableModels: { groq: any[]; azure: any[] } = { groq: [], azure: [] };
+  availableModels: { groq: any[]; azure: any[]; puter: any[]; gemini: any[]; github: any[] } = { groq: [], azure: [], puter: [], gemini: [], github: [] };
   providerModels: any[] = [];
+
+  // ── Puter.js browser SDK state ─────────────────────────────────────────────
+  puterSignedIn = false;
+  puterUsername = '';
+  puterChecking = false;
+
+  get isPuterProvider(): boolean { return this.promptForm?.value?.provider === 'puter'; }
 
   toolbarOptions = {
     toolbar: [
@@ -111,8 +118,9 @@ export class CodGeneratorComponent implements OnInit {
     this.loadModels();
     this.loadTokenUsage();
     this.promptForm.get('provider')!.valueChanges.subscribe(p => {
-      this.providerModels = this.availableModels[p as 'groq' | 'azure'] || [];
+      this.providerModels = (this.availableModels as any)[p] || [];
       this.promptForm.patchValue({ model: this.providerModels[0]?.id || '' });
+      if (p === 'puter') this.checkPuterAuth();
     });
   }
 
@@ -120,7 +128,7 @@ export class CodGeneratorComponent implements OnInit {
     this.codService.getModels().subscribe({
       next: (res: any) => {
         this.availableModels = res;
-        const currentProvider = this.promptForm.value.provider as 'groq' | 'azure';
+        const currentProvider = this.promptForm.value.provider;
         this.providerModels = res[currentProvider] || [];
         this.promptForm.patchValue({ model: this.providerModels[0]?.id || '' });
       }
@@ -186,6 +194,67 @@ export class CodGeneratorComponent implements OnInit {
   accumulateUsageLog(usageLog: any[]) {
     if (!Array.isArray(usageLog)) return;
     usageLog.forEach(u => this.accumulateUsage(u));
+  }
+
+  // ── Puter.js browser SDK helpers ────────────────────────────────────────────
+  async checkPuterAuth() {
+    const puter = (window as any).puter;
+    if (!puter?.auth) return;
+    this.puterChecking = true;
+    try {
+      const user = await puter.auth.getUser();
+      this.puterSignedIn = !!user;
+      this.puterUsername = user?.username || '';
+    } catch {
+      this.puterSignedIn = false;
+      this.puterUsername = '';
+    }
+    this.puterChecking = false;
+  }
+
+  async loginToPuter() {
+    const puter = (window as any).puter;
+    if (!puter?.auth) { window.open('https://puter.com', '_blank'); return; }
+    try {
+      await puter.auth.signIn();
+      await this.checkPuterAuth();
+    } catch {
+      window.open('https://puter.com', '_blank');
+    }
+  }
+
+  private async callPuterAI(messages: { role: string; content: string }[], model: string): Promise<string> {
+    const puter = (window as any).puter;
+    if (!puter?.ai?.chat) throw new Error('Puter.js not loaded. Ensure puter.js CDN script is present.');
+    const res = await puter.ai.chat(messages, { model: model || 'anthropic/claude-haiku-4.5' });
+    if (!res) throw new Error('Empty response from Puter AI');
+    if (typeof res === 'string') return res;
+    if (res.choices?.[0]?.message?.content) return res.choices[0].message.content;
+    if (typeof res.content === 'string') return res.content;
+    if (Array.isArray(res.content)) return res.content[0]?.text || '';
+    if (res.message?.content) {
+      const c = res.message.content;
+      return typeof c === 'string' ? c : (Array.isArray(c) ? c[0]?.text || '' : JSON.stringify(c));
+    }
+    return JSON.stringify(res);
+  }
+
+  private parsePuterJSON(text: string): any {
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+    try { return JSON.parse(text); } catch (_) {}
+    const arrIdx = text.indexOf('[');
+    const objIdx = text.indexOf('{');
+    const start = arrIdx !== -1 && (objIdx === -1 || arrIdx < objIdx) ? arrIdx : objIdx;
+    if (start === -1) throw new Error('No JSON found in Puter AI response');
+    const open = text[start], close = open === '[' ? ']' : '}';
+    let depth = 0, end = -1;
+    for (let i = start; i < text.length; i++) {
+      if (text[i] === open) depth++;
+      else if (text[i] === close) depth--;
+      if (depth === 0) { end = i; break; }
+    }
+    if (end === -1) throw new Error('JSON not properly closed in Puter AI response');
+    return JSON.parse(text.slice(start, end + 1));
   }
 
   get activeGuidelinesContent(): string | null {
@@ -288,6 +357,7 @@ export class CodGeneratorComponent implements OnInit {
       debuggingMode: false,
       debugSolution: '',
       debugGenerating: false,
+      debugRunningAll: false,
       editorOptions: { theme: 'vs-dark', language: langMap[langKey] || 'java' },
     };
   }
@@ -344,14 +414,87 @@ export class CodGeneratorComponent implements OnInit {
     });
   }
 
-  generateFromPrompt() {
+  async generateFromPrompt() {
     if (this.loading) return;
-    // this.guidelinesEditorOpen = !this.guidelinesEditorOpen
-    if (this.guidelinesEditorOpen)  this.guidelinesEditorOpen = false;
+    if (this.guidelinesEditorOpen) this.guidelinesEditorOpen = false;
     const { token, searchText, prompt } = this.promptForm.value;
     if (!prompt?.trim()) {
       this.toastr.warning('Prompt is required before generating problems.', 'Validation Failed'); return;
     }
+
+    // ── Puter branch ─────────────────────────────────────────────────────────
+    if (this.isPuterProvider) {
+      if (!token?.trim()) {
+        this.toastr.warning('Auth Token is required before generating problems.', 'Validation Failed'); return;
+      }
+      if (!searchText?.trim()) {
+        this.toastr.warning('QB Search text is required before generating problems.', 'Validation Failed'); return;
+      }
+      this.loading = true;
+      const pv = this.promptForm.getRawValue();
+      const count = Math.max(1, parseInt(pv.count) || 1);
+      const basePrompt = pv.prompt || `Generate ${count} unique scenario based ${pv.difficulty_level} level ${pv.language} programming description(s) on ${pv.topic}`;
+
+      const exampleDetailed = `{
+  "question_data": "<h3>Problem Statement: Bike Number Plate Verification System</h3><h4>Objective</h4><p>Create a Bike Number Plate Verification System using C# OOP principles...</p>",
+  "inputformat": "<p>1. Number of bikes to be added to the system.</p>",
+  "outputformat": "<p>For each bike, print the BikeID, Number Plate and whether the number plate is valid.</p>",
+  "constraints": "<ul><li>1 ≤ N ≤ 1000</li><li>Number plate length: 6–10 characters</li><li>Time limit: 1 second</li></ul>",
+  "manual_difficulty": "Easy",
+  "language": "C#"
+}`;
+      const exampleSimple = `{
+  "question_data": "<p><strong><u>Find the First Non-Repeating Character in a String</u></strong></p><p>Write a program that finds the first character that does not repeat.</p>",
+  "inputformat": "<p>A single line containing a string s.</p>",
+  "outputformat": "<ul><li>If a non-repeating character exists, print that character.</li><li>Otherwise, print: No non-repeating character found!</li></ul>",
+  "constraints": "<ul><li>1 ≤ |s| ≤ 10<sup>5</sup></li><li>s contains only lowercase English letters</li></ul>",
+  "manual_difficulty": "Easy",
+  "language": "C#"
+}`;
+      const example = pv.format === 'simple' ? exampleSimple : exampleDetailed;
+
+      const userContent = `${basePrompt}.
+
+You are an AI that generates scenario-based programming questions in a structured JSON format.
+
+Example item structure:
+${example}
+
+Rules:
+- Be scenario-based (real-world context).
+- Include a Title, Problem Description, and a clear Question section.
+- Specify Classes/Methods if needed.
+- Use HTML formatting for rich text (question_data, inputformat, outputformat, constraints).
+- Each item must be unique — different scenario, different problem title, different logic.
+- Do not repeat scenarios from previous responses.
+
+Return a bare JSON array: [ ...your ${count} questions... ]
+The array must contain exactly ${count} item(s).
+Each item must have: "question_data", "inputformat", "outputformat", "constraints", "manual_difficulty" (Easy|Medium|Hard), "language".
+Do not include any explanations, extra text, or markdown formatting — return only valid JSON.`;
+
+      const guidelinesContent = this.useGuidelines ? this.guidelinesText : null;
+      const systemContent = 'You are a COD Problem generator.' +
+        (guidelinesContent ? `\n\nFOLLOW THESE QUESTION CREATION GUIDELINES STRICTLY:\n\n${guidelinesContent}` : '');
+
+      try {
+        const rawText = await this.callPuterAI([
+          { role: 'system', content: systemContent },
+          { role: 'user', content: userContent }
+        ], pv.model);
+        let parsed = this.parsePuterJSON(rawText);
+        if (!Array.isArray(parsed)) parsed = parsed.items || parsed.problems || [parsed];
+        this.cods = parsed.map((item: any) => this.makeCod({ ...item, language: pv.language }));
+        this.toastr.success(`${this.cods.length} problem(s) generated via Puter.`, 'Done');
+        this.fetchSideData();
+      } catch (err: any) {
+        this.toastr.error(err.message || 'Puter AI call failed.', 'Error');
+      }
+      this.loading = false;
+      return;
+    }
+
+    // ── Backend branch ───────────────────────────────────────────────────────
     if (!token?.trim()) {
       this.toastr.warning('Auth Token is required before generating problems.', 'Validation Failed'); return;
     }
@@ -437,10 +580,84 @@ export class CodGeneratorComponent implements OnInit {
     });
   }
 
-  generateSolution(cod: any) {
+  async generateSolution(cod: any) {
     cod.solutionGenerating = true;
     cod.solutionError = '';
     const { provider, model } = this.promptForm.getRawValue();
+
+    // ── Puter branch ─────────────────────────────────────────────────────────
+    if (provider === 'puter') {
+      const tcRules = this.useGuidelines
+        ? `- Produce EXACTLY 9 distinct test cases ordered by ascending difficulty (Easy → Hard).
+- Weightage MUST be in ascending order and total exactly 100. Use this pattern: Easy=10, Easy=10, Medium=15, Medium=15, Hard=25, Hard=25 (adjust if needed but total must be 100 and order must be ascending).
+- From the 9 test cases, mark EXACTLY 2 to 3 as "isSampleIO": true — these are shown to students and must each cover a DIFFERENT output scenario (e.g. typical case, edge/boundary case, error/invalid case if applicable). Set "isSampleIO": false for the rest.
+- No duplicate inputs or outputs across test cases.
+- Manually verify each test case output against the solution logic.`
+        : `- Produce 10 to 15 distinct sample input/output pairs that cover edge cases, with a score per sample summing to 100 (Easy=low, Medium=normal, Hard=high score).
+- Add "isSampleIO": false to all samples (user will select manually).`;
+
+      const userContent = `You are an assistant that must return ONLY valid JSON (no Markdown, no code fences, no commentary).
+Infer the most appropriate programming language from the question; if unclear, default to Java.
+
+Requirements:
+- Provide a COMPLETE, RUNNABLE solution with ALL required imports.
+- The program must read dynamic user input from STDIN and print to STDOUT exactly as specified.
+- Do NOT include any placeholder text like "...", "your code here", etc.
+- All special characters inside JSON strings (newlines, tabs, backslashes, double quotes) MUST be properly escaped.
+${tcRules}
+- Ensure the JSON is syntactically valid.
+- STRICT JAVA RULE: If the language is Java, the public class name MUST be exactly "Main" (i.e. "public class Main"). No other class name is allowed as the entry point.
+- STRICT C++ RULE: If the language is C++, use a standard "int main()" entry point. Include necessary headers (e.g. #include <iostream>, #include <vector>, etc.) and use "using namespace std;" for simplicity. The program must compile with g++ without errors.
+
+Return JSON in this exact shape:
+[ { "solution_data": "...", "samples": [...], "io_spec": {...} } ]
+
+Where each item has:
+- "solution_data": complete runnable source code as a properly escaped JSON string
+- "samples": array of { "input": "...", "output": "...", "difficulty": "Easy|Medium|Hard", "score": number, "isSampleIO": boolean }
+- "io_spec": { "input_format": "...", "output_format": "..." }
+
+Question context:
+question_data: ${cod.question_data}
+inputformat: ${cod.inputformat}
+outputformat: ${cod.outputformat}
+constraints: ${cod.constraints || ''}
+language: ${cod.language || 'Java'}
+
+Return only valid JSON. No explanations, no markdown.`;
+
+      const guidelinesContent = this.useGuidelines ? this.guidelinesText : null;
+      const systemContent = 'You are a Compiler-based Problem Solution generator.' +
+        (guidelinesContent ? `\n\nFOLLOW THESE QUESTION CREATION GUIDELINES STRICTLY (especially Parameter 7: Solution rules, Parameter 8: Hidden Test Cases rules):\n\n${guidelinesContent}` : '');
+
+      try {
+        const rawText = await this.callPuterAI([
+          { role: 'system', content: systemContent },
+          { role: 'user', content: userContent }
+        ], model);
+        const parsed = this.parsePuterJSON(rawText);
+        // Response is an array [ { solution_data, samples, io_spec } ]
+        const item = Array.isArray(parsed) ? parsed[0] : (parsed.items?.[0] ?? parsed);
+        cod.solution = item.solution_data || '';
+        cod.samples = (item.samples || []).map((s: any) => ({
+          input: s.input || '', output: s.output || '',
+          difficulty: s.difficulty || 'Medium', score: s.score || 0,
+          isSampleIO: !!s.isSampleIO, error: '', running: false,
+          isSelected: this.useGuidelines ? !!s.isSampleIO : false,
+          hasRun: false, execTimeMs: 0, memBytes: '',
+        }));
+        cod.solutionGenerated = true;
+        cod.solutionVisible = true;
+        this.toastr.success('Solution generated via Puter.', 'Done');
+      } catch (err: any) {
+        cod.solutionError = 'Error generating solution via Puter.';
+        this.toastr.error(err.message || 'Puter AI call failed.', 'Error');
+      }
+      cod.solutionGenerating = false;
+      return;
+    }
+
+    // ── Backend branch ───────────────────────────────────────────────────────
     this.codService.generateSolution({ ...cod, provider, model, useGuidelines: this.useGuidelines, guidelinesContent: this.activeGuidelinesContent }, true).subscribe({
       next: (res: any) => {
         const solution = res.response[0];
@@ -478,13 +695,84 @@ export class CodGeneratorComponent implements OnInit {
     });
   }
 
-  regenerateTestcases(cod: any) {
+  async regenerateTestcases(cod: any) {
     if (!cod.solution) {
       this.toastr.warning('Generate a solution first before regenerating test cases.', 'No Solution'); return;
     }
     const count = this.useGuidelines ? 6 : (cod.tcCount || 15);
     cod.tcRegenerating = true;
     const { provider, model } = this.promptForm.getRawValue();
+
+    // ── Puter branch ─────────────────────────────────────────────────────────
+    if (provider === 'puter') {
+      const n = this.useGuidelines ? 9 : Math.max(1, Math.min(50, parseInt(count) || 15));
+
+      const guidelinesRules = this.useGuidelines
+        ? `- Generate EXACTLY 9 test cases ordered by ascending difficulty: 3 Easy, 3 Medium, 3 Hard.
+- Weightage in ASCENDING order totalling exactly 100: Easy=10, Easy=10, Easy=10, Medium=15, Medium=15, Medium=15, Hard=25, Hard=25, Hard=25.
+- No duplicate inputs or outputs across the 9 test cases.
+- Manually verify each test case output against the solution logic.
+- Select EXACTLY 2 to 3 test cases as "samples" (shown to students). Each sample must cover a DIFFERENT output scenario (e.g. typical, edge/boundary, error/invalid). They must be a subset of testcases.`
+        : `- Scores of ALL test cases must sum to exactly 100.
+- Select 2 to 5 representative test cases as "samples" covering all possible input/output patterns.`;
+
+      const userContent = `You are a test-case generator. Return ONLY valid JSON — no Markdown, no code fences, no commentary.
+
+Task: Given the problem description and the reference solution below, generate exactly ${n} distinct test cases.
+
+Rules:
+- Each test case must have: "input", "output", "difficulty" (Easy|Medium|Hard), "score" (number).
+- The "output" must be the EXACT output produced by running the provided solution against the "input".
+- Cover a wide range of scenarios: minimum values, maximum values, edge cases, typical cases, stress cases.
+${guidelinesRules}
+- The "samples" array must be a SUBSET of "testcases" (same input/output values).
+
+Return this exact JSON shape:
+{ "testcases": [...], "samples": [...] }
+
+Where:
+- "testcases": array of all ${n} test cases: [{ "input": "...", "output": "...", "difficulty": "Easy|Medium|Hard", "score": number }]
+- "samples": array of selected sample I/O test cases (subset, same shape)
+
+Problem:
+${cod.question_data}
+
+Language: ${cod.language || 'Java'}
+
+Reference Solution:
+${cod.solution}
+
+Return only valid JSON. No explanations.`;
+
+      const guidelinesContent = this.useGuidelines ? this.guidelinesText : null;
+      const systemContent = 'You are a test-case generator for programming problems.' +
+        (guidelinesContent ? `\n\nFOLLOW THESE QUESTION CREATION GUIDELINES STRICTLY (especially Parameter 5: Sample Input, Parameter 6: Sample Output, Parameter 8: Hidden Test Cases rules):\n\n${guidelinesContent}` : '');
+
+      try {
+        const rawText = await this.callPuterAI([
+          { role: 'system', content: systemContent },
+          { role: 'user', content: userContent }
+        ], model);
+        const parsed = this.parsePuterJSON(rawText);
+        const inner = parsed?.items ?? parsed;
+        const sampleInputs = new Set((inner.samples || []).map((s: any) => s.input?.trim()));
+        cod.samples = (inner.testcases || inner.samples || []).map((s: any) => ({
+          input: s.input || '', output: s.output || '',
+          difficulty: s.difficulty || 'Medium', score: s.score || 0,
+          error: '', running: false, hasRun: false,
+          isSelected: sampleInputs.has(s.input?.trim()),
+          execTimeMs: 0, memBytes: '',
+        }));
+        this.redistributeScores(cod);
+        this.toastr.success(`${cod.samples.length} test case(s) generated via Puter.`, 'Done');
+      } catch (err: any) {
+        this.toastr.error(err.message || 'Puter AI call failed.', 'Error');
+      }
+      cod.tcRegenerating = false;
+      return;
+    }
+
+    // ── Backend branch ───────────────────────────────────────────────────────
     this.codService.regenerateTestcases({
       question_data: cod.question_data,
       solution_data: cod.solution,
@@ -598,12 +886,60 @@ export class CodGeneratorComponent implements OnInit {
     this.promptForm.patchValue({ prompt: text });
   }
 
-  refineQuestion(cod: any) {
+  async refineQuestion(cod: any) {
     if (!cod.refinePrompt?.trim()) {
       this.toastr.warning('Enter a refine instruction before updating.', 'Input Required'); return;
     }
     cod.refining = true;
     const { provider, model } = this.promptForm.getRawValue();
+
+    // ── Puter branch ─────────────────────────────────────────────────────────
+    if (provider === 'puter') {
+      const userContent = `You are an AI that refines existing programming questions based on user instructions.
+
+Existing question:
+question_data: ${cod.question_data}
+inputformat: ${cod.inputformat || ''}
+outputformat: ${cod.outputformat || ''}
+constraints: ${cod.constraints || ''}
+language: ${cod.language || 'Java'}
+
+User instruction: ${cod.refinePrompt}
+
+Apply the instruction to update the question. Keep all fields and formatting intact unless the instruction specifically changes them.
+Use HTML formatting for rich text (question_data, inputformat, outputformat, constraints).
+The updated question must still be scenario-based with a clear Title, Problem Description, and Question section.
+
+Return a single JSON object (not an array): { ...updated question... }
+The object must have: "question_data", "inputformat", "outputformat", "constraints", "manual_difficulty" (Easy|Medium|Hard), "language".
+Return only valid JSON. No explanations, no markdown.`;
+
+      const guidelinesContent = this.useGuidelines ? this.guidelinesText : null;
+      const systemContent = 'You are a COD Problem refiner.' +
+        (guidelinesContent ? `\n\nFOLLOW THESE QUESTION CREATION GUIDELINES STRICTLY:\n\n${guidelinesContent}` : '');
+
+      try {
+        const rawText = await this.callPuterAI([
+          { role: 'system', content: systemContent },
+          { role: 'user', content: userContent }
+        ], model);
+        const updated = this.parsePuterJSON(rawText);
+        const item = updated?.item ?? updated;
+        cod.question_data     = item.question_data     ?? cod.question_data;
+        cod.inputformat       = item.inputformat       ?? cod.inputformat;
+        cod.outputformat      = item.outputformat      ?? cod.outputformat;
+        cod.constraints       = item.constraints       ?? cod.constraints;
+        cod.manual_difficulty = item.manual_difficulty ?? cod.manual_difficulty;
+        cod.refinePrompt = '';
+        this.toastr.success('Question updated via Puter.', 'Refined');
+      } catch (err: any) {
+        this.toastr.error(err.message || 'Puter AI call failed.', 'Error');
+      }
+      cod.refining = false;
+      return;
+    }
+
+    // ── Backend branch ───────────────────────────────────────────────────────
     this.codService.refineCod({
       question_data: cod.question_data,
       inputformat: cod.inputformat,
@@ -643,12 +979,102 @@ export class CodGeneratorComponent implements OnInit {
     }
   }
 
-  generateDebugCode(cod: any) {
+  async runAllDebugSamples(cod: any) {
+    if (cod.debugRunningAll) return;
+    if (!cod.debugSolution?.trim()) {
+      this.toastr.warning('Generate or write debug code first.', 'No Debug Code'); return;
+    }
+    if (!cod.samples?.length) {
+      this.toastr.warning('No test cases to run debug against.', 'No Test Cases'); return;
+    }
+    cod.debugRunningAll = true;
+    for (const sample of cod.samples) {
+      await new Promise<void>((resolve) => {
+        sample.debugRunning = true;
+        sample.debugOutput = '';
+        sample.debugError = '';
+        sample.debugMatchesExpected = null;
+        this.codService.runCode({ code: cod.debugSolution, input: sample.input, language: cod.language }).subscribe({
+          next: (res: any) => {
+            sample.debugOutput = res.output || '';
+            sample.debugError = res.error ? `${res.error}${res.details ? ': ' + res.details : ''}` : '';
+            const expected = (sample.output || '').trim();
+            const actual = (sample.debugOutput || '').trim();
+            // true = SAME output (bug not effective), false = DIFFERENT output (bug works)
+            sample.debugMatchesExpected = expected !== '' && (expected === actual);
+            sample.debugRunning = false;
+            resolve();
+          },
+          error: () => {
+            sample.debugError = 'Error running debug code';
+            sample.debugRunning = false;
+            sample.debugMatchesExpected = null;
+            resolve();
+          }
+        });
+      });
+    }
+    cod.debugRunningAll = false;
+    const ran = cod.samples.filter((s: any) => s.debugMatchesExpected !== null && s.debugMatchesExpected !== undefined);
+    const effective = ran.filter((s: any) => s.debugMatchesExpected === false).length;
+    const total = ran.length;
+    if (effective === total && total > 0) {
+      this.toastr.success(`All ${total} TCs produce wrong output — bugs are effective!`, 'Debug Check');
+    } else if (effective > 0) {
+      this.toastr.info(`${effective}/${total} TCs produce wrong output.`, 'Debug Check');
+    } else {
+      this.toastr.warning('All TCs produce same output as solution — bugs may not be effective!', 'Debug Check');
+    }
+  }
+
+  async generateDebugCode(cod: any) {
     if (!cod.solution) {
       this.toastr.warning('Generate a solution first before creating debug code.', 'No Solution'); return;
     }
     cod.debugGenerating = true;
     const { provider, model } = this.promptForm.getRawValue();
+
+    // ── Puter branch ─────────────────────────────────────────────────────────
+    if (provider === 'puter') {
+      const userContent = `You are a programming instructor creating a debugging exercise for students.
+
+Given the CORRECT solution below, produce a BUGGY version that has 2–4 intentional, subtle errors students must find and fix.
+
+Rules:
+- Preserve the overall structure, class names, method signatures, and all imports exactly.
+- Introduce LOGICAL bugs only (wrong operator, off-by-one, wrong variable used, wrong condition, missing/extra step) — NOT syntax errors.
+- The buggy code must still COMPILE successfully but produce WRONG output for most inputs.
+- Do NOT add any comments, markers, or hints about where the bugs are.
+- Return ONLY valid JSON in this exact shape: { "debug_code": "..." }
+  where "debug_code" is the complete buggy source code as a properly escaped JSON string.
+
+Language: ${cod.language || 'Java'}
+
+Problem:
+${cod.question_data}
+
+Correct Solution:
+${cod.solution}
+
+Return only valid JSON. No explanations, no markdown.`;
+
+      try {
+        const rawText = await this.callPuterAI([
+          { role: 'system', content: 'You are a programming instructor creating debugging exercises. Return only valid JSON, no markdown.' },
+          { role: 'user', content: userContent }
+        ], model);
+        const parsed = this.parsePuterJSON(rawText);
+        const inner = parsed?.items ?? parsed;
+        cod.debugSolution = inner.debug_code || '';
+        this.toastr.success('Debug code generated via Puter.', 'Done');
+      } catch (err: any) {
+        this.toastr.error(err.message || 'Puter AI call failed.', 'Error');
+      }
+      cod.debugGenerating = false;
+      return;
+    }
+
+    // ── Backend branch ───────────────────────────────────────────────────────
     this.codService.generateDebugCode({
       solution_data: cod.solution,
       question_data: cod.question_data,
@@ -759,6 +1185,10 @@ export class CodGeneratorComponent implements OnInit {
 
   difficultyColor(d: string): string {
     return d === 'Hard' ? '#ef4444' : d === 'Medium' ? '#f59e0b' : '#10b981';
+  }
+
+  hasDebugBeenRun(samples: any[]): boolean {
+    return samples.some(s => s.debugMatchesExpected !== undefined && s.debugMatchesExpected !== null);
   }
 
   trackByCod(index: number): number { return index; }

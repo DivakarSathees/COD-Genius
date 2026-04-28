@@ -174,6 +174,7 @@
             <select class="field-select" formControlName="provider">
               <option value="gemini">⭐ Google Gemini</option>
               <option value="azure">⭐ Azure OpenAI (GPT-4o)</option>
+              <option value="puter">🆓 Personal (Free AI)</option>
               <option value="github">GitHub Models</option>
               <option value="groq">Groq (Llama)</option>
             </select>
@@ -185,6 +186,23 @@
               <option *ngIf="!providerModels.length" value="">Loading models…</option>
             </select>
           </div>
+        </div>
+
+        <!-- Puter login banner -->
+        <div *ngIf="isPuterProvider" class="puter-banner">
+          <span class="puter-banner-icon">⚡</span>
+          <div class="puter-banner-content">
+            <div class="puter-banner-title">Personal Free AI — runs in your browser</div>
+            <div *ngIf="puterChecking" class="puter-status">Checking login status…</div>
+            <div *ngIf="!puterChecking && puterSignedIn" class="puter-status puter-signed-in">
+              ✓ Signed in as <strong>{{ puterUsername }}</strong>
+            </div>
+            <div *ngIf="!puterChecking && !puterSignedIn" class="puter-status puter-signed-out">
+              Not signed in — login for better limits (optional)
+            </div>
+          </div>
+          <button *ngIf="!puterChecking && !puterSignedIn" class="btn-puter-login" (click)="loginToPuter()">Login to Personal AI</button>
+          <button *ngIf="!puterChecking && puterSignedIn" class="btn-puter-refresh" (click)="checkPuterAuth()">↺ Refresh</button>
         </div>
 
         <!-- Prompt -->
@@ -507,6 +525,21 @@
               <div class="editor-wrap">
                 <ngx-monaco-editor [options]="cod.editorOptions" [(ngModel)]="cod.debugSolution"></ngx-monaco-editor>
               </div>
+
+              <!-- ── Debug Run Section ── -->
+              <div class="debug-run-section" *ngIf="cod.samples.length > 0">
+                <div class="debug-run-toolbar">
+                  <button class="btn-run-debug-all"
+                    [disabled]="cod.debugRunningAll || !cod.debugSolution"
+                    (click)="runAllDebugSamples(cod)">
+                    <span *ngIf="!cod.debugRunningAll">▶▶ Run Debug on All TCs</span>
+                    <span *ngIf="cod.debugRunningAll" class="loading-text"><span class="dot-spinner"></span> Running…</span>
+                  </button>
+                  <span class="debug-run-hint">
+                    Debug output must <strong>NOT</strong> match expected — mismatches confirm bugs are effective
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -554,6 +587,16 @@
                   {{ cod.validation.results[j].passed ? '✓' : '✗' }}
                 </span>
 
+                <!-- Debug status badge in header -->
+                <span *ngIf="cod.debuggingMode && s.debugRunning"
+                  class="debug-status-badge debug-pending tc-debug-badge">Running…</span>
+                <span *ngIf="cod.debuggingMode && !s.debugRunning && s.debugMatchesExpected === false && !s.debugError"
+                  class="debug-status-badge debug-effective tc-debug-badge">✓ Bug Works</span>
+                <span *ngIf="cod.debuggingMode && !s.debugRunning && s.debugMatchesExpected === true && !s.debugError"
+                  class="debug-status-badge debug-ineffective tc-debug-badge">⚠ Bug Ineffective</span>
+                <span *ngIf="cod.debuggingMode && !s.debugRunning && s.debugError"
+                  class="debug-status-badge debug-error-badge tc-debug-badge">✗ Debug Error</span>
+
                 <div class="tc-meta">
                   <select class="field-select micro-select" [(ngModel)]="s.difficulty" [disabled]="s.isSelected">
                     <option>Easy</option><option>Medium</option><option>Hard</option>
@@ -583,6 +626,23 @@
                     <pre *ngIf="s.error" class="out-error">{{ s.error }}</pre>
                     <span *ngIf="!s.output && !s.error" class="io-placeholder">Not run yet</span>
                   </div>
+                </div>
+              </div>
+
+              <!-- Debug output row — visible only when debugging mode is active -->
+              <div *ngIf="cod.debuggingMode && (s.debugMatchesExpected !== null && s.debugMatchesExpected !== undefined || s.debugRunning)"
+                class="tc-debug-row"
+                [class.tc-debug-row-effective]="s.debugMatchesExpected === false"
+                [class.tc-debug-row-ineffective]="s.debugMatchesExpected === true"
+                [class.tc-debug-row-error]="!!s.debugError">
+                <span class="tc-debug-row-label">Debug Output</span>
+                <div class="io-output-box tc-debug-output-box"
+                  [class.io-fail]="s.debugMatchesExpected === false"
+                  [class.io-pass]="s.debugMatchesExpected === true">
+                  <span *ngIf="s.debugRunning" class="io-placeholder">Running debug code…</span>
+                  <pre *ngIf="!s.debugRunning && !s.debugError && s.debugOutput">{{ s.debugOutput }}</pre>
+                  <pre *ngIf="!s.debugRunning && s.debugError" class="out-error">{{ s.debugError }}</pre>
+                  <span *ngIf="!s.debugRunning && !s.debugError && !s.debugOutput" class="io-placeholder">(empty output)</span>
                 </div>
               </div>
 
