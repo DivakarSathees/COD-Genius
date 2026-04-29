@@ -72,6 +72,18 @@ export class CodServiceService {
     return this.http.post(`${this.apiUrl}/run-java`, code);
   }
 
+  registerQuestions(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/register-questions`, data);
+  }
+
+  saveSolution(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/save-solution`, data);
+  }
+
+  saveDebugCode(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/save-debug-code`, data);
+  }
+
   uploadCods(data: any, token: any): Observable<any> {
     const decode = this.decodeToken(token);
     data.createdBy = decode?.user_id || '';

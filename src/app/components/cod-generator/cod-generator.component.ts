@@ -431,6 +431,9 @@ export class CodGeneratorComponent implements OnInit {
         this.toastr.warning('QB Search text is required before generating problems.', 'Validation Failed'); return;
       }
       this.loading = true;
+      if (!sessionStorage.getItem('codSessionId')) {
+        sessionStorage.setItem('codSessionId', crypto.randomUUID());
+      }
       const pv = this.promptForm.getRawValue();
       const count = Math.max(1, parseInt(pv.count) || 1);
       const basePrompt = pv.prompt || `Generate ${count} unique scenario based ${pv.difficulty_level} level ${pv.language} programming description(s) on ${pv.topic}`;
@@ -487,6 +490,18 @@ Do not include any explanations, extra text, or markdown formatting — return o
         this.cods = parsed.map((item: any) => this.makeCod({ ...item, language: pv.language }));
         this.toastr.success(`${this.cods.length} problem(s) generated via Puter.`, 'Done');
         this.fetchSideData();
+        this.codService.registerQuestions({
+          questions: this.cods.map((c: any) => ({
+            question_data: c.question_data,
+            inputformat: c.inputformat || '',
+            outputformat: c.outputformat || '',
+            constraints: c.constraints || '',
+            language: c.language,
+          })),
+          prompt: pv.prompt || '',
+          topic: pv.topic || '',
+          sessionId: sessionStorage.getItem('codSessionId') || '',
+        }).subscribe({ next: () => this.getAllSessions(), error: () => {} });
       } catch (err: any) {
         this.toastr.error(err.message || 'Puter AI call failed.', 'Error');
       }
@@ -648,6 +663,11 @@ Return only valid JSON. No explanations, no markdown.`;
         }));
         cod.solutionGenerated = true;
         cod.solutionVisible = true;
+        this.codService.saveSolution({
+          question_data: cod.question_data,
+          solution_data: cod.solution,
+          testcases: cod.samples.map((s: any) => ({ input: s.input, output: s.output, difficulty: s.difficulty, score: s.score, isSampleIO: !!s.isSampleIO })),
+        }).subscribe({ error: () => {} });
         this.toastr.success('Solution generated via Puter.', 'Done');
       } catch (err: any) {
         cod.solutionError = 'Error generating solution via Puter.';
@@ -1066,6 +1086,10 @@ Return only valid JSON. No explanations, no markdown.`;
         const parsed = this.parsePuterJSON(rawText);
         const inner = parsed?.items ?? parsed;
         cod.debugSolution = inner.debug_code || '';
+        this.codService.saveDebugCode({
+          question_data: cod.question_data,
+          debug_code: cod.debugSolution,
+        }).subscribe({ error: () => {} });
         this.toastr.success('Debug code generated via Puter.', 'Done');
       } catch (err: any) {
         this.toastr.error(err.message || 'Puter AI call failed.', 'Error');
@@ -1166,7 +1190,11 @@ Return only valid JSON. No explanations, no markdown.`;
       question_media: [], pcm_combination_ids: [''],
       qb_id: this.selectedQbId || vals.qb_id || '',
       createdBy: '', imported: 'is_imported_question',
-      tags: ["cod-genius"]
+      tags: ["cod-genius"],
+      language: cod.language || '',
+      topic: vals.topic || '',
+      sessionId: sessionStorage.getItem('codSessionId') || '',
+      prompt: vals.prompt || '',
     };
     this.codService.uploadCods(payload, this.promptForm.value.token).subscribe({
       next: (res: any) => {
@@ -1174,10 +1202,13 @@ Return only valid JSON. No explanations, no markdown.`;
           cod.upload = true;
           this.toastr.success('Question uploaded to platform successfully!', 'Uploaded');
         } else {
+        this.toastr.error('Upload error: ' + (res.response[0].error?.message || 'Unknown error'), 'Upload Error');
           this.toastr.error('Upload failed. Please try again.', 'Upload Error');
         }
       },
       error: (err: any) => {
+        console.log(err);
+        
         this.toastr.error('Upload error: ' + (err.error?.message || 'Unknown error'), 'Upload Error');
       }
     });
