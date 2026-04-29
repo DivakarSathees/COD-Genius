@@ -8,6 +8,7 @@ import { CodServiceService } from '../../services/cod-service.service';
 import { AuthService } from '../../services/auth.service';
 import { QuillEditorComponent } from 'ngx-quill';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-cod-generator',
@@ -92,7 +93,65 @@ export class CodGeneratorComponent implements OnInit {
   get currentUser() { return this.authService.getCurrentUser(); }
   logout() { this.authService.logout(); }
 
-  constructor(private fb: FormBuilder, private codService: CodServiceService, private authService: AuthService, private toastr: ToastrService) {
+  // ── Generated Questions History ────────────────────────────────────────────
+  historyOpen = false;
+  historyQuestions: any[] = [];
+  historyLoading = false;
+  historyPage = 1;
+  historyTotal = 0;
+  historyLimit = 15;
+  historySearch = '';
+  historyLangFilter = '';
+  historyUploadFilter = 'all';
+  historyExpandedIdx: number | null = null;
+
+  get historyPageCount(): number { return Math.ceil(this.historyTotal / this.historyLimit); }
+
+  openHistory() {
+    this.historyOpen = true;
+    this.historyPage = 1;
+    this.historySearch = '';
+    this.historyLangFilter = '';
+    this.historyUploadFilter = 'all';
+    this.historyExpandedIdx = null;
+    this.loadHistory();
+  }
+
+  loadHistory() {
+    this.historyLoading = true;
+    this.historyExpandedIdx = null;
+    const params: any = { page: this.historyPage, limit: this.historyLimit };
+    if (this.historySearch.trim()) params.search = this.historySearch.trim();
+    if (this.historyLangFilter) params.language = this.historyLangFilter;
+    if (this.historyUploadFilter !== 'all') params.uploaded = this.historyUploadFilter;
+    this.codService.getGeneratedQuestions(params).subscribe({
+      next: (res: any) => {
+        this.historyQuestions = res.questions || [];
+        this.historyTotal = res.total || 0;
+        this.historyLoading = false;
+      },
+      error: () => {
+        this.historyLoading = false;
+        this.toastr.error('Failed to load history.', 'Error');
+      }
+    });
+  }
+
+  historyGoPage(p: number) {
+    if (p < 1 || p > this.historyPageCount) return;
+    this.historyPage = p;
+    this.loadHistory();
+  }
+
+  historyToggleExpand(idx: number) {
+    this.historyExpandedIdx = this.historyExpandedIdx === idx ? null : idx;
+  }
+
+  safeHtml(html: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(html || '');
+  }
+
+  constructor(private fb: FormBuilder, private codService: CodServiceService, private authService: AuthService, private toastr: ToastrService, private sanitizer: DomSanitizer) {
     this.promptForm = this.fb.group({
       prompt: ['', Validators.required],
       token: ['', Validators.required],

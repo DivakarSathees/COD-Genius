@@ -72,6 +72,10 @@ export class CodServiceService {
     return this.http.post(`${this.apiUrl}/run-java`, code);
   }
 
+  getGeneratedQuestions(params?: any): Observable<any> {
+    return this.http.get(`${this.apiUrl}/generated-questions`, { params });
+  }
+
   registerQuestions(data: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/register-questions`, data);
   }
