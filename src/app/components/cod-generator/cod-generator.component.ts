@@ -104,6 +104,7 @@ export class CodGeneratorComponent implements OnInit {
   historyLangFilter = '';
   historyUploadFilter = 'all';
   historyExpandedIdx: number | null = null;
+  historyExpandedTc = new Set<number>();
 
   get historyPageCount(): number { return Math.ceil(this.historyTotal / this.historyLimit); }
 
@@ -114,12 +115,14 @@ export class CodGeneratorComponent implements OnInit {
     this.historyLangFilter = '';
     this.historyUploadFilter = 'all';
     this.historyExpandedIdx = null;
+    this.historyExpandedTc.clear();
     this.loadHistory();
   }
 
   loadHistory() {
     this.historyLoading = true;
     this.historyExpandedIdx = null;
+    this.historyExpandedTc.clear();
     const params: any = { page: this.historyPage, limit: this.historyLimit };
     if (this.historySearch.trim()) params.search = this.historySearch.trim();
     if (this.historyLangFilter) params.language = this.historyLangFilter;
@@ -145,10 +148,26 @@ export class CodGeneratorComponent implements OnInit {
 
   historyToggleExpand(idx: number) {
     this.historyExpandedIdx = this.historyExpandedIdx === idx ? null : idx;
+    if (this.historyExpandedIdx !== idx) this.historyExpandedTc.delete(idx);
+  }
+
+  historyToggleTc(idx: number) {
+    if (this.historyExpandedTc.has(idx)) this.historyExpandedTc.delete(idx);
+    else this.historyExpandedTc.add(idx);
   }
 
   safeHtml(html: string): SafeHtml {
     return this.sanitizer.bypassSecurityTrustHtml(html || '');
+  }
+
+  langClass(lang: string): string {
+    const map: Record<string, string> = {
+      'java': 'java', 'python': 'python',
+      'c#': 'csharp', 'csharp': 'csharp',
+      'c': 'c', 'c++': 'cpp', 'cpp': 'cpp',
+      'javascript': 'javascript', 'typescript': 'typescript', 'go': 'go',
+    };
+    return map[(lang || '').toLowerCase()] || 'other';
   }
 
   constructor(private fb: FormBuilder, private codService: CodServiceService, private authService: AuthService, private toastr: ToastrService, private sanitizer: DomSanitizer) {
@@ -414,6 +433,8 @@ export class CodGeneratorComponent implements OnInit {
       upload: false,
       batchStatus: null,
       debuggingMode: false,
+      debugPrompt: '',
+      debugBugCount: 3,
       debugSolution: '',
       debugGenerating: false,
       debugRunningAll: false,
@@ -713,13 +734,15 @@ Return only valid JSON. No explanations, no markdown.`;
         // Response is an array [ { solution_data, samples, io_spec } ]
         const item = Array.isArray(parsed) ? parsed[0] : (parsed.items?.[0] ?? parsed);
         cod.solution = item.solution_data || '';
-        cod.samples = (item.samples || []).map((s: any) => ({
-          input: s.input || '', output: s.output || '',
-          difficulty: s.difficulty || 'Medium', score: s.score || 0,
-          isSampleIO: !!s.isSampleIO, error: '', running: false,
-          isSelected: this.useGuidelines ? !!s.isSampleIO : false,
-          hasRun: false, execTimeMs: 0, memBytes: '',
-        }));
+        cod.samples = (item.samples || [])
+          .filter((s: any) => s.input?.trim())
+          .map((s: any) => ({
+            input: s.input || '', output: s.output || '',
+            difficulty: s.difficulty || 'Medium', score: s.score || 0,
+            isSampleIO: !!s.isSampleIO, error: '', running: false,
+            isSelected: this.useGuidelines ? !!s.isSampleIO : false,
+            hasRun: false, execTimeMs: 0, memBytes: '',
+          }));
         cod.solutionGenerated = true;
         cod.solutionVisible = true;
         this.codService.saveSolution({
@@ -742,7 +765,7 @@ Return only valid JSON. No explanations, no markdown.`;
         const solution = res.response[0];
         const validation = res.validation || null;
         cod.solution = solution.solution_data;
-        cod.samples = (solution.samples || []).map((s: any, j: number) => {
+        const rawSamples = (solution.samples || []).map((s: any, j: number) => {
           const valResult = validation?.results?.[j];
           return {
             input: s.input,
@@ -758,9 +781,13 @@ Return only valid JSON. No explanations, no markdown.`;
             hasRun: !!valResult,
             execTimeMs: valResult?.execTimeMs || 0,
             memBytes: valResult?.memBytes ? String(valResult.memBytes) : '',
+            _origIdx: j,
           };
-        });
-        cod.validation = validation;
+        }).filter((s: any) => s.input?.trim());
+        cod.samples = rawSamples.map(({ _origIdx, ...s }: any) => s);
+        cod.validation = validation
+          ? { ...validation, results: rawSamples.map((s: any) => validation.results?.[s._origIdx] ?? null) }
+          : null;
         cod.solutionGenerated = true;
         cod.solutionVisible = true;
         cod.solutionGenerating = false;
@@ -835,13 +862,15 @@ Return only valid JSON. No explanations.`;
         const parsed = this.parsePuterJSON(rawText);
         const inner = parsed?.items ?? parsed;
         const sampleInputs = new Set((inner.samples || []).map((s: any) => s.input?.trim()));
-        cod.samples = (inner.testcases || inner.samples || []).map((s: any) => ({
-          input: s.input || '', output: s.output || '',
-          difficulty: s.difficulty || 'Medium', score: s.score || 0,
-          error: '', running: false, hasRun: false,
-          isSelected: sampleInputs.has(s.input?.trim()),
-          execTimeMs: 0, memBytes: '',
-        }));
+        cod.samples = (inner.testcases || inner.samples || [])
+          .filter((s: any) => s.input?.trim())
+          .map((s: any) => ({
+            input: s.input || '', output: s.output || '',
+            difficulty: s.difficulty || 'Medium', score: s.score || 0,
+            error: '', running: false, hasRun: false,
+            isSelected: sampleInputs.has(s.input?.trim()),
+            execTimeMs: 0, memBytes: '',
+          }));
         this.redistributeScores(cod);
         this.toastr.success(`${cod.samples.length} test case(s) generated via Puter.`, 'Done');
       } catch (err: any) {
@@ -882,11 +911,14 @@ Return only valid JSON. No explanations.`;
             isSelected: sampleInputs.has(s.input?.trim()),
             execTimeMs: valResult?.execTimeMs || 0,
             memBytes: valResult?.memBytes ? String(valResult.memBytes) : '',
+            _origIdx: j,
           };
-        });
+        }).filter((s: any) => s.input?.trim());
 
-        cod.samples = allTc;
-        cod.validation = validation || null;
+        cod.samples = allTc.map(({ _origIdx, ...s }: any) => s);
+        cod.validation = validation
+          ? { ...validation, results: allTc.map((s: any) => validation.results?.[s._origIdx] ?? null) }
+          : null;
         this.redistributeScores(cod);
         cod.tcRegenerating = false;
         this.accumulateUsage(res.usage);
@@ -919,46 +951,80 @@ Return only valid JSON. No explanations.`;
     });
   }
 
-  runSample(cod: any, sample: any) {
+  runSample(cod: any, sample: any, index?: number) {
     sample.running = true;
     sample.output = '';
     sample.error = '';
     this.codService.runCode({ code: cod.solution, input: sample.input, language: cod.language }).subscribe({
       next: (res: any) => {
-        sample.output = res.output+'\n' || '';
+        sample.output = res.output + '\n' || '';
         sample.execTimeMs = res.timeBytes || 0;
         sample.memBytes = String(res.memBytes || '');
         if (res.error) sample.error = `${res.error}${res.details ? ': ' + res.details : ''}`;
         sample.hasRun = true;
         sample.running = false;
+        if (index !== undefined) {
+          if (!cod.validation) cod.validation = { results: new Array(cod.samples.length).fill(null) };
+          cod.validation.results[index] = { passed: !res.error, actual_output: res.output };
+          this.syncValidationSummary(cod);
+        }
       },
-      error: () => { sample.error = 'Error executing code'; sample.hasRun = true; sample.running = false; }
+      error: () => {
+        sample.error = 'Error executing code';
+        sample.hasRun = true;
+        sample.running = false;
+        if (index !== undefined) {
+          if (!cod.validation) cod.validation = { results: new Array(cod.samples.length).fill(null) };
+          cod.validation.results[index] = { passed: false, actual_output: '' };
+          this.syncValidationSummary(cod);
+        }
+      }
     });
+  }
+
+  private syncValidationSummary(cod: any) {
+    if (!cod.validation) {
+      cod.validation = { results: new Array(cod.samples.length).fill(null) };
+    }
+    const results: any[] = cod.validation.results || [];
+    cod.validation.total = cod.samples.length;
+    cod.validation.passed_count = cod.samples.filter((_: any, i: number) => results[i]?.passed === true).length;
+    cod.validation.failed_count = cod.samples.filter((_: any, i: number) => results[i] != null && results[i].passed !== true).length;
   }
 
   async runAllSamples(cod: any) {
     if (cod.runningAll) return;
     cod.runningAll = true;
-    for (const sample of cod.samples) {
+    for (let idx = 0; idx < cod.samples.length; idx++) {
+      const sample = cod.samples[idx];
       await new Promise<void>((resolve) => {
         sample.running = true;
         sample.error = '';
         this.codService.runCode({ code: cod.solution, input: sample.input, language: cod.language }).subscribe({
           next: (res: any) => {
-            // sample.output = res.output || '';
-            sample.output = res.output+'\n' || '';
+            sample.output = res.output + '\n' || '';
             sample.execTimeMs = res.execTimeMs || 0;
             sample.memBytes = String(res.memBytes || '');
             if (res.error) sample.error = `${res.error}${res.details ? ': ' + res.details : ''}`;
             sample.hasRun = true;
             sample.running = false;
+            if (!cod.validation) cod.validation = { results: new Array(cod.samples.length).fill(null) };
+            cod.validation.results[idx] = { passed: !res.error, actual_output: res.output };
             resolve();
           },
-          error: () => { sample.error = 'Error executing code'; sample.hasRun = true; sample.running = false; resolve(); }
+          error: () => {
+            sample.error = 'Error executing code';
+            sample.hasRun = true;
+            sample.running = false;
+            if (!cod.validation) cod.validation = { results: new Array(cod.samples.length).fill(null) };
+            cod.validation.results[idx] = { passed: false, actual_output: '' };
+            resolve();
+          }
         });
       });
     }
     cod.runningAll = false;
+    this.syncValidationSummary(cod);
   }
 
   setPrompt(text: string) {
@@ -1115,17 +1181,26 @@ Return only valid JSON. No explanations, no markdown.`;
 
     // ── Puter branch ─────────────────────────────────────────────────────────
     if (provider === 'puter') {
+      const tcSection = cod.samples?.length
+        ? `\n\nTest Cases (your buggy code MUST produce WRONG output for at least 70% of these — use them to verify effectiveness):\n${
+            (cod.samples as any[]).slice(0, 10).map((tc: any, i: number) =>
+              `TC${i + 1} [${tc.difficulty || 'Medium'}]:\n  Input: ${tc.input}\n  Expected (correct) output: ${tc.output}`
+            ).join('\n')
+          }`
+        : '';
       const userContent = `You are a programming instructor creating a debugging exercise for students.
 
-Given the CORRECT solution below, produce a BUGGY version that has 2–4 intentional, subtle errors students must find and fix.
+Given the CORRECT solution below, produce a BUGGY version that has EXACTLY ${cod.debugBugCount || 3} intentional, subtle error(s) students must find and fix.
 
 Rules:
+- Introduce EXACTLY ${cod.debugBugCount || 3} bug(s) — no more, no less.
 - Preserve the overall structure, class names, method signatures, and all imports exactly.
 - Introduce LOGICAL bugs only (wrong operator, off-by-one, wrong variable used, wrong condition, missing/extra step) — NOT syntax errors.
 - The buggy code must still COMPILE successfully but produce WRONG output for most inputs.
 - Do NOT add any comments, markers, or hints about where the bugs are.
+- The bugs must be EFFECTIVE: when run against the provided test cases, the buggy code must produce incorrect output for the majority of them.
 - Return ONLY valid JSON in this exact shape: { "debug_code": "..." }
-  where "debug_code" is the complete buggy source code as a properly escaped JSON string.
+  where "debug_code" is the complete buggy source code as a properly escaped JSON string.${tcSection}${cod.debugPrompt?.trim() ? `\n\nAdditional requirements from instructor:\n${cod.debugPrompt.trim()}` : ''}
 
 Language: ${cod.language || 'Java'}
 
@@ -1162,6 +1237,9 @@ Return only valid JSON. No explanations, no markdown.`;
       solution_data: cod.solution,
       question_data: cod.question_data,
       language: cod.language,
+      testcases: (cod.samples || []).map((s: any) => ({ input: s.input, output: s.output, difficulty: s.difficulty })),
+      bug_count: cod.debugBugCount || 3,
+      debug_prompt: cod.debugPrompt || '',
       provider,
       model,
     }).subscribe({
@@ -1204,7 +1282,13 @@ Return only valid JSON. No explanations, no markdown.`;
     cod.samples.push({ input: '', output: '', error: '', running: false, isSelected: false, score: 0, difficulty: 'Easy', hasRun: false });
   }
 
-  deleteSample(cod: any, index: number) { cod.samples.splice(index, 1); }
+  deleteSample(cod: any, index: number) {
+    cod.samples.splice(index, 1);
+    if (cod.validation?.results) {
+      cod.validation.results.splice(index, 1);
+    }
+    if (cod.validation) this.syncValidationSummary(cod);
+  }
 
   uploadCOD(cod: any) {
     if (cod.samples.some((s: any) => !s.hasRun)) {
