@@ -5,7 +5,8 @@ import { Observable } from 'rxjs/internal/Observable';
 @Injectable({ providedIn: 'root' })
 export class CodServiceService {
   // private apiUrl = 'http://localhost:3000';
-  private apiUrl = 'https://cod-genius-backend.onrender.com';
+  // private apiUrl = 'https://cod-genius-backend.onrender.com';
+  private apiUrl = 'https://cod-genius-backend-testing.onrender.com';
   
 
   constructor(private http: HttpClient) {}

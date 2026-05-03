@@ -12,7 +12,8 @@ export interface AuthUser {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   // private apiUrl = 'http://localhost:3000';
-  private apiUrl = 'https://cod-genius-backend.onrender.com';
+  // private apiUrl = 'https://cod-genius-backend.onrender.com';
+  private apiUrl = 'https://cod-genius-backend-testing.onrender.com';
 
   private readonly TOKEN_KEY = 'cod_auth_token';
   private readonly USER_KEY  = 'cod_auth_user';
